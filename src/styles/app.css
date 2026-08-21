@@ -1,0 +1,192 @@
+@import 'tailwindcss' source('../');
+
+@custom-variant light (&:where(.light, .light *));
+
+@theme {
+  --font-display: 'Trebuchet MS', 'Segoe UI', system-ui, sans-serif;
+  --font-sans: 'Segoe UI', system-ui, sans-serif;
+  --color-void: #07060f;
+  --color-nebula: #1a1230;
+  --color-warm: #2a2118;
+  --color-magenta: #ff2bd6;
+  --color-gold: #ffd24a;
+  --color-star-gold: #ffd24a;
+  --color-star-red: #ff4b4b;
+  --color-star-green: #3dff8a;
+  --color-star-blue: #4da3ff;
+  --color-star-purple: #c084fc;
+  --color-star-cyan: #22d3ee;
+  --spacing: 4px;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#app {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background: radial-gradient(1200px 800px at 50% -10%, #2a1650 0%, var(--color-void) 55%);
+  color: #f6e8c8;
+}
+
+html.light body {
+  background: radial-gradient(1200px 800px at 50% -10%, #f3e0c2 0%, #c9b8a0 45%, #8a7a6a 100%);
+  color: #1c140c;
+}
+
+.display {
+  font-family: var(--font-display);
+  letter-spacing: 0.04em;
+}
+
+.tab-fx {
+  position: relative;
+  overflow: hidden;
+}
+
+.tab-fx::after {
+  content: '';
+  position: absolute;
+  inset: -40%;
+  background: radial-gradient(circle, rgba(255, 43, 214, 0.35), transparent 55%);
+  opacity: 0;
+  transform: translate3d(0, 8px, 0);
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
+  pointer-events: none;
+}
+
+.tab-fx:hover::after,
+.tab-fx[data-active='true']::after {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+}
+
+.mote {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 999px;
+  background: #ffd24a;
+  box-shadow: 0 0 8px #ffd24a;
+  animation: mote-orbit 2.8s linear infinite;
+}
+
+@keyframes mote-orbit {
+  from {
+    transform: translate3d(10px, 0, 0) rotate(0deg) translate3d(14px, 0, 0) rotate(0deg);
+  }
+  to {
+    transform: translate3d(10px, 0, 0) rotate(360deg) translate3d(14px, 0, 0) rotate(-360deg);
+  }
+}
+
+@keyframes star-dance {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+  }
+  30% {
+    transform: translate3d(0, -3px, 0) rotate(-8deg) scale(1.05);
+  }
+  60% {
+    transform: translate3d(1px, 2px, 0) rotate(6deg) scale(0.98);
+  }
+}
+
+@keyframes star-explode {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+    opacity: 1;
+  }
+  55% {
+    transform: translate3d(0, 0, 0) rotate(140deg) scale(1.35);
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(0, -8px, 0) rotate(220deg) scale(0.2);
+    opacity: 0;
+  }
+}
+
+@keyframes fall-in {
+  from {
+    transform: translate3d(0, -18px, 0);
+    opacity: 0;
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+  }
+}
+
+@keyframes banner-pop {
+  0% {
+    transform: translate3d(-50%, -12px, 0) scale(0.6);
+    opacity: 0;
+  }
+  35% {
+    transform: translate3d(-50%, 0, 0) scale(1.12);
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(-50%, -6px, 0) scale(1);
+    opacity: 0;
+  }
+}
+
+@keyframes orb-pulse {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    filter: brightness(1);
+  }
+  50% {
+    transform: translate3d(0, -4px, 0) scale(1.06);
+    filter: brightness(1.25);
+  }
+}
+
+@keyframes shoot {
+  0% {
+    transform: translate3d(-10%, -10%, 0);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(120%, 80%, 0);
+    opacity: 0;
+  }
+}
+
+.star-idle {
+  animation: star-dance 2.6s ease-in-out infinite;
+}
+
+.star-explode {
+  animation: star-explode 380ms ease-in forwards;
+}
+
+.star-spawn {
+  animation: fall-in 280ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

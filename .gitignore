@@ -1,0 +1,13 @@
+node_modules
+dist
+.output
+.netlify
+.vinxi
+.tanstack
+.nitro
+.DS_Store
+*.log
+.env
+.env.local
+.env.*.local
+coverage
