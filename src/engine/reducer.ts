@@ -1,13 +1,13 @@
-import { refillBoard, generateInitialCells } from './board'
+import { playableHasHoles, refillBoard, generateInitialCells } from './board'
 import {
   clearOverlaysOnMatch,
   damageAdjacentBlockers,
   maybeSpreadChocolate,
-  stripBlockerHealth,
   tickBombs,
 } from './blockers'
 import { convertMovesToSpecials, finaleMultiplier } from './finale'
 import { applyGravity } from './gravity'
+import { rngInt } from './prng'
 import { findMatches } from './match'
 import {
   applyJellyClear,
@@ -17,15 +17,9 @@ import {
   objectiveComplete,
   syncJellyObjective,
 } from './objectives'
-import {
-  allBoardIndices,
-  colorIndices,
-  comboForSpecials,
-  giantCrossBlast,
-  rowColCross,
-  stripedLine,
-  wrappedBlast,
-} from './specials'
+import { comboForSpecials, SUN_BLAST_RADIUS, TWIN_SUN_BLAST_RADIUS, wrappedBlast } from './specials'
+import { rollKitDrop } from '~/data/kit'
+import { cometTailMultiplier, sectorDifficulty } from '~/data/difficulty'
 import {
   BOARD_HEIGHT,
   BOARD_WIDTH,
@@ -36,13 +30,13 @@ import {
   comboWord,
   emptyCell,
   isHole,
+  isMatchable,
   isSwappable,
   type Cell,
   type EngineAction,
   type GameState,
   type LevelConfig,
   type SpecialKind,
-  type StarColor,
 } from './types'
 
 const MAX_WAVES = 48
@@ -74,28 +68,8 @@ function detonateQueue(
     const cell = cells[i]!
     if (cell.special !== 'none' && !detonatedSpecial.has(i)) {
       detonatedSpecial.add(i)
-      if (cell.special === 'striped-h') {
-        const blast = stripedLine(cells, i, 'h', width, height)
-        for (const d of blast.destroyed) if (!destroyed.has(d)) queue.push(d)
-      } else if (cell.special === 'striped-v') {
-        const blast = stripedLine(cells, i, 'v', width, height)
-        for (const d of blast.destroyed) if (!destroyed.has(d)) queue.push(d)
-      } else if (cell.special === 'wrapped') {
-        for (const d of wrappedBlast(i, 1, width, height)) if (!destroyed.has(d)) queue.push(d)
-      } else if (cell.special === 'starfish') {
-        const color = cell.color
-        if (color) {
-          for (const d of colorIndices(cells, color).slice(0, 4)) {
-            if (!destroyed.has(d)) queue.push(d)
-          }
-        }
-      } else if (cell.special === 'color-bomb') {
-        const color = findNeighborColor(cells, i, width, height)
-        if (color) {
-          for (const d of colorIndices(cells, color)) if (!destroyed.has(d)) queue.push(d)
-        } else {
-          for (const d of allBoardIndices(width, height)) queue.push(d)
-        }
+      for (const d of wrappedBlast(i, SUN_BLAST_RADIUS, width, height)) {
+        if (!destroyed.has(d)) queue.push(d)
       }
     }
   }
@@ -105,24 +79,6 @@ function detonateQueue(
   }
 
   return { cells: next, destroyed }
-}
-
-function findNeighborColor(cells: Cell[], i: number, width: number, height: number): StarColor | null {
-  const { x, y } = { x: i % width, y: Math.floor(i / width) }
-  const dirs = [
-    [1, 0],
-    [-1, 0],
-    [0, 1],
-    [0, -1],
-  ]
-  for (const [dx, dy] of dirs) {
-    const nx = x + dx
-    const ny = y + dy
-    if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue
-    const c = cells[nx + ny * width]!
-    if (c.color) return c.color
-  }
-  return cells.find((c) => c.color)?.color ?? null
 }
 
 function applyDestroy(state: GameState, destroyed: Set<number>, spawnedAt: Map<number, SpecialKind>): GameState {
@@ -151,8 +107,8 @@ function applyDestroy(state: GameState, destroyed: Set<number>, spawnedAt: Map<n
     const color = state.cells[index]!.color
     cells[index] = {
       ...emptyCell(jelly),
-      color: special === 'color-bomb' ? null : color,
-      special,
+      color,
+      special: special === 'none' ? 'none' : 'wrapped',
     }
   }
 
@@ -171,6 +127,52 @@ function applyDestroy(state: GameState, destroyed: Set<number>, spawnedAt: Map<n
     objective,
     chocolateDestroyedThisMove: chocolateDestroyed,
   }
+}
+
+function blastAndRefill(state: GameState, seeds: Iterable<number>, combo = 1): GameState {
+  const { destroyed } = detonateQueue(state.cells, seeds, state.width, state.height)
+  let current = applyDestroy(state, destroyed, new Map())
+  const collected = collectIngredients(current.cells, current.width, current.height, current.exits)
+  current = { ...current, cells: collected.cells }
+  if (collected.collected.length && current.objective.type === 'ingredient') {
+    current = {
+      ...current,
+      objective: {
+        type: 'ingredient',
+        remaining: Math.max(0, current.objective.remaining - collected.collected.length),
+      },
+      events: [
+        ...current.events,
+        { type: 'ingredient-collect', indices: collected.collected },
+      ],
+    }
+  }
+  const grav = applyGravity(current.cells, current.width, current.height)
+  current = { ...current, cells: grav.cells }
+  const filled = refillBoard(current)
+  const blast = blastForCombo(combo, 1, destroyed.size)
+  current = {
+    ...current,
+    cells: filled.cells,
+    rngState: filled.rngState,
+    combo,
+    score: current.score + destroyed.size * 50 * combo,
+    events: [
+      ...current.events,
+      {
+        type: 'wave',
+        combo,
+        blast,
+        destroyed: [...destroyed],
+        spawnedSpecials: [],
+        gravity: grav.moves,
+        refill: filled.refill,
+        groups: 1,
+        word: comboWord(combo),
+      },
+    ],
+  }
+  return resolveCascades(current)
 }
 
 function resolveCascades(state: GameState, preferredOrigin?: number): GameState {
@@ -195,8 +197,9 @@ function resolveCascades(state: GameState, preferredOrigin?: number): GameState 
       }
     }
 
+    const waveCells = current.cells
     const { destroyed } = detonateQueue(
-      current.cells,
+      waveCells,
       matchSet,
       current.width,
       current.height,
@@ -225,17 +228,24 @@ function resolveCascades(state: GameState, preferredOrigin?: number): GameState 
     const filled = refillBoard(current)
     current = { ...current, cells: filled.cells, rngState: filled.rngState }
 
-    const blast = blastForCombo(combo)
-    const word = comboWord(combo)
+    const groups = Math.max(1, matches.length)
+    const blast = blastForCombo(combo, groups, destroyed.size)
+    const word = comboWord(combo, groups)
     const points = Math.round(
-      destroyed.size * 40 * combo * (current.status === 'finale' ? finaleMultiplier(combo) : 1),
+      destroyed.size *
+        40 *
+        combo *
+        cometTailMultiplier(current.cometTail) *
+        (current.status === 'finale' ? finaleMultiplier(combo) : 1),
     )
+    const sunHit = [...destroyed].some((i) => waveCells[i]?.special !== 'none')
     current = {
       ...current,
       score: current.score + points,
       combo,
       events: [
         ...current.events,
+        ...(sunHit ? [{ type: 'special-combo' as const, kind: 'sun' }] : []),
         {
           type: 'wave',
           combo,
@@ -244,11 +254,21 @@ function resolveCascades(state: GameState, preferredOrigin?: number): GameState 
           spawnedSpecials: [...spawnMap.entries()].map(([index, special]) => ({ index, special })),
           gravity: grav.moves,
           refill: filled.refill,
+          groups,
           word,
         },
       ],
     }
     preferredOrigin = undefined
+  }
+
+  if (playableHasHoles(current.cells)) {
+    const sealed = refillBoard(current)
+    current = { ...current, cells: sealed.cells, rngState: sealed.rngState }
+    const last = current.events.at(-1)
+    if (last && last.type === 'wave' && sealed.refill.length) {
+      last.refill = [...last.refill, ...sealed.refill]
+    }
   }
 
   return current
@@ -286,11 +306,12 @@ function detonateAllSpecials(state: GameState): GameState {
       {
         type: 'wave',
         combo,
-        blast: blastForCombo(combo),
+        blast: blastForCombo(combo, 1, destroyed.size),
         destroyed: [...destroyed],
         spawnedSpecials: [],
         gravity: grav.moves,
         refill: filled.refill,
+        groups: 1,
         word: comboWord(combo),
       },
     ],
@@ -314,53 +335,14 @@ function applySpecialCombo(state: GameState, a: number, b: number): GameState | 
   const combo = comboForSpecials(ca.special, cb.special)
   if (!combo) return null
 
-  let destroyed = new Set<number>()
-  let cells = state.cells.map(cloneCell)
-  let strip = false
+  const cells = state.cells.map(cloneCell)
+  let destroyed = wrappedBlast(b, TWIN_SUN_BLAST_RADIUS, state.width, state.height)
+  destroyed.add(a)
+  destroyed.add(b)
 
-  if (combo.type === 'cross') {
-    destroyed = rowColCross(b, state.width, state.height)
-  } else if (combo.type === 'giant-cross') {
-    destroyed = giantCrossBlast(state.width, state.height)
-  } else if (combo.type === 'wrapped-5') {
-    destroyed = wrappedBlast(b, 2, state.width, state.height)
-  } else if (combo.type === 'wipe') {
-    destroyed = allBoardIndices(state.width, state.height)
-    strip = true
-  } else if (combo.type === 'bomb-stripe') {
-    const color = (combo.colorFrom === 'a' ? ca : cb).color
-    if (color) {
-      for (const i of colorIndices(cells, color)) {
-        cells[i] = {
-          ...cells[i]!,
-          special: i % 2 === 0 ? 'striped-h' : 'striped-v',
-        }
-        destroyed.add(i)
-      }
-    }
-    destroyed.add(a)
-    destroyed.add(b)
-  } else if (combo.type === 'bomb-wrap') {
-    const color = (combo.colorFrom === 'a' ? ca : cb).color
-    if (color) {
-      for (const i of colorIndices(cells, color)) {
-        cells[i] = { ...cells[i]!, special: 'wrapped' }
-        destroyed.add(i)
-      }
-    }
-    destroyed.add(a)
-    destroyed.add(b)
-  } else if (combo.type === 'bomb-color') {
-    const color = (combo.colorFrom === 'a' ? ca : cb).color
-    destroyed.add(a)
-    destroyed.add(b)
-    if (color) for (const i of colorIndices(cells, color)) destroyed.add(i)
-  }
-
-  const detonated = detonateQueue({ ...state, cells }.cells, destroyed, state.width, state.height, strip)
+  const detonated = detonateQueue(cells, destroyed, state.width, state.height)
   destroyed = detonated.destroyed
   let next: GameState = { ...state, cells }
-  if (strip) next = { ...next, cells: stripBlockerHealth(next.cells) }
   next = applyDestroy(next, destroyed, new Map())
   const grav = applyGravity(next.cells, next.width, next.height)
   const filled = refillBoard({ ...next, cells: grav.cells })
@@ -372,6 +354,7 @@ function applySpecialCombo(state: GameState, a: number, b: number): GameState | 
     score: next.score + destroyed.size * 80,
     events: [
       ...next.events,
+      { type: 'special-combo', kind: combo.type },
       {
         type: 'wave',
         combo: 1,
@@ -380,6 +363,7 @@ function applySpecialCombo(state: GameState, a: number, b: number): GameState | 
         spawnedSpecials: [],
         gravity: grav.moves,
         refill: filled.refill,
+        groups: 1,
         word: 'SUPERNOVA',
       },
     ],
@@ -470,7 +454,22 @@ function finishMove(state: GameState, consumedMove: boolean): GameState {
     }
   }
 
-  return current
+  return maybeDropKit(current)
+}
+
+function maybeDropKit(state: GameState): GameState {
+  if (state.status !== 'playing' || state.levelId <= 0) return state
+  const wave = [...state.events].reverse().find((e) => e.type === 'wave')
+  if (!wave || wave.type !== 'wave' || wave.destroyed.length < 4) return state
+  const roll = rollKitDrop(state.rngState, state.sectorId, wave.combo, wave.blast, state.kitDrops ?? 0)
+  if (!roll.item) return { ...state, rngState: roll.rngState }
+  const pick = wave.destroyed[Math.min(wave.destroyed.length - 1, Math.floor(roll.indexJitter * wave.destroyed.length))]!
+  return {
+    ...state,
+    rngState: roll.rngState,
+    kitDrops: (state.kitDrops ?? 0) + 1,
+    events: [...state.events, { type: 'kit-drop', item: roll.item, index: pick }],
+  }
 }
 
 export function createGame(config: LevelConfig): GameState {
@@ -487,7 +486,7 @@ export function createGame(config: LevelConfig): GameState {
     movesLeft: config.moves,
     score: 0,
     combo: 0,
-    streak: 0,
+    cometTail: 0,
     seed: config.seed,
     rngState,
     colorCount: config.colorCount,
@@ -501,6 +500,9 @@ export function createGame(config: LevelConfig): GameState {
     exits,
     levelId: config.id,
     sectorId: config.sectorId,
+    timeLimit: config.timeLimit ?? sectorDifficulty(config.sectorId).timeLimit,
+    timeLeft: config.timeLimit ?? sectorDifficulty(config.sectorId).timeLimit,
+    kitDrops: 0,
   }
   state = syncJellyObjective(state)
   state = resolveCascades(state)
@@ -511,6 +513,31 @@ export function createGame(config: LevelConfig): GameState {
 export function reduce(state: GameState, action: EngineAction): GameState {
   if (state.status === 'won' || state.status === 'lost') return state
   if (state.status === 'finale' && action.type !== 'tick-finale') return state
+
+  if (action.type === 'decay-comet-tail') {
+    if (state.status !== 'playing' || state.cometTail === 0) return state
+    return {
+      ...state,
+      cometTail: 0,
+      events: [{ type: 'comet-tail', value: 0, decayed: true }],
+    }
+  }
+
+  if (action.type === 'tick-clock') {
+    if (state.status !== 'playing') return state
+    const timeLeft = Math.max(0, state.timeLeft - 1)
+    // Keep the same events array so a 1s tick does not retrigger Board/Play effects.
+    if (timeLeft > 0) return { ...state, timeLeft }
+    if (objectiveComplete(state.objective)) {
+      return finishMove({ ...cloneState(state), timeLeft: 0 }, false)
+    }
+    return {
+      ...state,
+      timeLeft: 0,
+      status: 'lost',
+      events: [{ type: 'status', status: 'lost', reason: 'Orbit clock expired' }],
+    }
+  }
 
   let current = cloneState(state)
   current.events = []
@@ -523,16 +550,30 @@ export function reduce(state: GameState, action: EngineAction): GameState {
 
   if (action.type === 'spawn-special') {
     const cells = current.cells.map(cloneCell)
-    cells[action.index] = { ...cells[action.index]!, special: action.special }
+    cells[action.index] = {
+      ...cells[action.index]!,
+      special: action.special === 'none' ? 'none' : 'wrapped',
+    }
     return { ...current, cells }
   }
 
-  if (action.type === 'hammer') {
+  if (action.type === 'ignite-special') {
+    const cell = current.cells[action.index]
+    if (!cell || cell.special === 'none' || !isSwappable(cell)) {
+      return { ...current, events: [{ type: 'invalid-swap', a: action.index, b: action.index }] }
+    }
+    current = blastAndRefill(current, [action.index], 1)
+    current = { ...current, movesLeft: Math.max(0, current.movesLeft - 1) }
+    current = rewardForMove(current)
+    return finishMove(current, true)
+  }
+
+  if (action.type === 'hammer' || action.type === 'well') {
     const i = action.index
     const cell = current.cells[i]!
     if (cell.frosting === 0 && isHole(cell) && !cell.chocolate) return current
-    const destroyed = new Set([i])
-    current.movesLeft = Math.max(0, current.movesLeft)
+    const destroyed =
+      action.type === 'well' ? wrappedBlast(i, 1, current.width, current.height) : new Set([i])
     current = applyDestroy(current, destroyed, new Map())
     const grav = applyGravity(current.cells, current.width, current.height)
     const filled = refillBoard({ ...current, cells: grav.cells })
@@ -544,14 +585,37 @@ export function reduce(state: GameState, action: EngineAction): GameState {
         {
           type: 'wave',
           combo: 1,
-          blast: 'S',
-          destroyed: [i],
+          blast: action.type === 'well' ? 'M' : 'S',
+          destroyed: [...destroyed],
           spawnedSpecials: [],
           gravity: grav.moves,
           refill: filled.refill,
+          groups: 1,
         },
       ],
     }
+    current = resolveCascades(current)
+    current = rewardForMove(current)
+    return finishMove(current, false)
+  }
+
+  if (action.type === 'shuffle') {
+    const cells = current.cells.map(cloneCell)
+    const idxs: number[] = []
+    for (let i = 0; i < cells.length; i++) {
+      if (isMatchable(cells[i]!) && cells[i]!.special === 'none') idxs.push(i)
+    }
+    let rng = current.rngState
+    for (let i = idxs.length - 1; i > 0; i--) {
+      const r = rngInt(rng, i + 1)
+      rng = r.state
+      const a = idxs[i]!
+      const b = idxs[r.n]!
+      const colorA = cells[a]!.color
+      cells[a] = { ...cells[a]!, color: cells[b]!.color }
+      cells[b] = { ...cells[b]!, color: colorA }
+    }
+    current = { ...current, cells, rngState: rng }
     current = resolveCascades(current)
     current = rewardForMove(current)
     return finishMove(current, false)
@@ -595,19 +659,25 @@ export function reduce(state: GameState, action: EngineAction): GameState {
   }
 
   const specialCombo = applySpecialCombo(
-    { ...current, cells: swapCells(current.cells, a, b), events: [{ type: 'swap', a, b }] },
+    {
+      ...current,
+      cells: swapCells(current.cells, a, b),
+      cometTail: current.cometTail + 1,
+      events: [{ type: 'swap', a, b }],
+    },
     a,
     b,
   )
   if (specialCombo) {
-    let next = { ...specialCombo, movesLeft: current.movesLeft - 1, streak: current.streak + 1 }
+    let next = { ...specialCombo, movesLeft: current.movesLeft - 1, cometTail: current.cometTail + 1 }
     next = rewardForMove(next)
     return finishMove(next, true)
   }
 
   const swapped = swapCells(current.cells, a, b)
   const matches = findMatches(swapped, current.width, current.height, b)
-  if (matches.length === 0 && current.cells[a]!.special !== 'color-bomb' && current.cells[b]!.special !== 'color-bomb') {
+  const specialSeeds = [a, b].filter((i) => swapped[i]!.special !== 'none')
+  if (matches.length === 0 && specialSeeds.length === 0) {
     return { ...current, events: [{ type: 'invalid-swap', a, b }] }
   }
 
@@ -615,10 +685,10 @@ export function reduce(state: GameState, action: EngineAction): GameState {
     ...current,
     cells: swapped,
     movesLeft: current.movesLeft - 1,
-    streak: current.streak + 1,
+    cometTail: current.cometTail + 1,
     events: [{ type: 'swap', a, b }],
   }
-  current = resolveCascades(current, b)
+  current = matches.length === 0 ? blastAndRefill(current, specialSeeds, 1) : resolveCascades(current, b)
   current = rewardForMove(current)
   return finishMove(current, true)
 }
@@ -637,7 +707,8 @@ export function serializeBoard(state: GameState) {
     score: state.score,
     status: state.status,
     combo: state.combo,
-    streak: state.streak,
+    cometTail: state.cometTail,
+    timeLeft: state.timeLeft,
     rngState: state.rngState,
     objective: state.objective,
     cells: state.cells.map((c) => ({

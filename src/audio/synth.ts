@@ -37,20 +37,32 @@ export class StarSynth {
     const filter = ctx.createBiquadFilter()
     const gain = ctx.createGain()
     osc.type = 'triangle'
-    const freq = 280 * Math.pow(1.12, Math.min(combo, 14))
+    const freq = 320 * Math.pow(1.145, Math.min(combo, 16))
     osc.frequency.setValueAtTime(freq, ctx.currentTime)
-    osc.frequency.exponentialRampToValueAtTime(freq * 1.6, ctx.currentTime + 0.08)
+    osc.frequency.exponentialRampToValueAtTime(freq * 1.85, ctx.currentTime + 0.09)
     filter.type = 'lowpass'
-    filter.frequency.value = 1800 + combo * 220
-    filter.Q.value = 6
+    filter.frequency.value = 2200 + combo * 260
+    filter.Q.value = 7
     gain.gain.setValueAtTime(0.0001, ctx.currentTime)
-    gain.gain.exponentialRampToValueAtTime(0.28, ctx.currentTime + 0.01)
-    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.16)
+    gain.gain.exponentialRampToValueAtTime(0.32, ctx.currentTime + 0.012)
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.15)
     osc.connect(filter)
     filter.connect(gain)
     gain.connect(master)
     osc.start()
-    osc.stop(ctx.currentTime + 0.18)
+    osc.stop(ctx.currentTime + 0.17)
+    const ping = ctx.createOscillator()
+    const pingGain = ctx.createGain()
+    ping.type = 'sine'
+    ping.frequency.setValueAtTime(freq * 2.15, ctx.currentTime)
+    ping.frequency.exponentialRampToValueAtTime(freq * 3.1, ctx.currentTime + 0.07)
+    pingGain.gain.setValueAtTime(0.0001, ctx.currentTime)
+    pingGain.gain.exponentialRampToValueAtTime(0.12, ctx.currentTime + 0.01)
+    pingGain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.11)
+    ping.connect(pingGain)
+    pingGain.connect(master)
+    ping.start()
+    ping.stop(ctx.currentTime + 0.12)
   }
 
   whoosh() {

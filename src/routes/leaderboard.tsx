@@ -15,10 +15,10 @@ function BoardPage() {
   if (q.isPending) return <ProfileSkeleton />
   if (q.isError) {
     return (
-      <div className="p-4">
+      <div className="space-y-3 p-4">
         <h1 className="display text-[28px] text-gold">Constellation Board</h1>
-        <p className="mt-2 text-[13px] text-red-300">
-          Live board is offline. Local pilots still shine — connect Supabase to publish scores.
+        <p className="rounded-2xl border border-white/10 bg-black/25 p-3 text-[13px] text-white/70">
+          Live board is docked offline. Local pilots still shine — add Supabase keys to publish scores.
         </p>
       </div>
     )

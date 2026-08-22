@@ -1,5 +1,10 @@
 import type { LevelConfig, Objective, StarColor } from '~/engine/types'
 import { STAR_COLORS } from '~/engine/types'
+import {
+  ingredientExits,
+  levelTimeLimit,
+  sectorDifficulty,
+} from './difficulty'
 import { SECTORS } from './sectors'
 
 type StageSpec = number[]
@@ -174,19 +179,61 @@ function pickIndices(rand: () => number, count: number, avoid = new Set<number>(
 function makeObjective(rand: () => number, sectorId: number, id: number): Objective {
   const roll = id % 3
   if (roll === 0) {
-    return { type: 'jelly', remaining: 12 + sectorId * 8 + Math.floor(rand() * 8) }
+    return { type: 'jelly', remaining: 16 + sectorId * 10 + Math.floor(rand() * 10) }
   }
   if (roll === 1) {
-    return { type: 'ingredient', remaining: 2 + Math.floor(sectorId / 2) + (rand() > 0.6 ? 1 : 0) }
+    return { type: 'ingredient', remaining: 2 + Math.floor(sectorId / 2) + (rand() > 0.45 ? 1 : 0) }
   }
-  const color = STAR_COLORS[Math.floor(rand() * Math.min(6, 3 + sectorId))] as StarColor
-  if (rand() > 0.7) {
+  const color = STAR_COLORS[Math.floor(rand() * Math.min(6, 4 + sectorId))] as StarColor
+  if (rand() > 0.55) {
     return {
       type: 'order',
-      orders: [{ special: rand() > 0.5 ? 'wrapped' : 'striped-h', count: 1 + Math.floor(sectorId / 2) }],
+      orders: [{ special: 'wrapped', count: 1 + Math.floor(sectorId / 2) }],
     }
   }
-  return { type: 'order', orders: [{ color, count: 10 + sectorId * 4 }] }
+  return { type: 'order', orders: [{ color, count: 12 + sectorId * 5 }] }
+}
+
+/** Distinct geometries so later nebulas/systems are not the same scatter with new IDs. */
+function patternFrosting(
+  rand: () => number,
+  count: number,
+  pattern: number,
+  avoid: Set<number>,
+): number[] {
+  const wanted: number[] = []
+  const tryAdd = (i: number) => {
+    if (i < 0 || i > 63 || avoid.has(i) || wanted.includes(i)) return
+    wanted.push(i)
+  }
+  if (pattern === 0) {
+    const col = 1 + (Math.floor(rand() * 3) % 3)
+    for (let y = 1; y < 7; y++) tryAdd(col + y * 8)
+    for (let y = 2; y < 6; y++) tryAdd(col + 3 + y * 8)
+  } else if (pattern === 1) {
+    for (let x = 1; x < 7; x++) {
+      tryAdd(x + 8)
+      tryAdd(x + 6 * 8)
+    }
+    for (let y = 2; y < 6; y++) {
+      tryAdd(1 + y * 8)
+      tryAdd(6 + y * 8)
+    }
+  } else if (pattern === 2) {
+    for (let i = 0; i < 8; i++) tryAdd(i + i * 8)
+    for (let i = 0; i < 6; i++) tryAdd(i + 2 + i * 8)
+  } else if (pattern === 3) {
+    const ox = rand() > 0.5 ? 0 : 4
+    const oy = rand() > 0.5 ? 0 : 4
+    for (let y = 0; y < 4; y++) {
+      for (let x = 0; x < 4; x++) {
+        if ((x + y) % 2 === 0) tryAdd(ox + x + (oy + y) * 8)
+      }
+    }
+  }
+  for (const i of wanted) avoid.add(i)
+  if (wanted.length >= count) return wanted.slice(0, count)
+  return [...wanted, ...pickIndices(rand, count - wanted.length, avoid)]
 }
 
 export interface CampaignNode {
@@ -206,10 +253,11 @@ export function generateCampaign(): CampaignNode {
 
   for (const sector of TREE) {
     const sectorMeta = SECTORS.find((s) => s.id === sector.id)!
-    for (const system of sector.systems) {
+    const diff = sectorDifficulty(sector.id)
+    for (const [systemIndex, system] of sector.systems.entries()) {
       const systemId = `${sector.id}-${slug(system.name)}`
       const nebulaIds: string[] = []
-      for (const nebula of system.nebulas) {
+      for (const [nebulaIndex, nebula] of system.nebulas.entries()) {
         const nebulaId = `${systemId}-${slug(nebula.name)}`
         nebulaIds.push(nebulaId)
         const stageIds: string[] = []
@@ -221,30 +269,48 @@ export function generateCampaign(): CampaignNode {
             const id = levelId++
             const seed = (0x51a7b000 + id * 7919) | 0
             const rand = mulberry(seed)
-            const colorCount = Math.max(4, 6 - Math.floor((sector.id - 1) / 2))
-            const moves = Math.max(12, 34 - sector.id * 3 - Math.floor(id / 40) + Math.floor(rand() * 4))
+            const colorCount = diff.colorCount
+            const moves = Math.max(
+              diff.minMoves,
+              32 - sector.id * 4 - systemIndex * 2 - nebulaIndex - Math.floor(id / 55) + Math.floor(rand() * 3),
+            )
             const avoid = new Set<number>()
-            const frostingCount = sector.id >= 2 ? Math.floor(rand() * sector.id * 3) : id > 8 ? Math.floor(rand() * 4) : 0
-            const frosting = pickIndices(rand, frostingCount, avoid)
-            const chocolate = sector.id >= 3 ? pickIndices(rand, Math.floor(rand() * sector.id), avoid) : []
-            const swirls = sector.id >= 2 ? pickIndices(rand, Math.floor(rand() * (sector.id + 1)), avoid) : []
-            const locks = sector.id >= 2 ? pickIndices(rand, Math.floor(rand() * 3), avoid) : []
-            const marmalade = pickIndices(rand, sector.id >= 3 ? 2 + Math.floor(rand() * 4) : id > 5 ? Math.floor(rand() * 3) : 0, avoid)
-            const bombs =
-              sector.id >= 4
-                ? pickIndices(rand, 1 + Math.floor(rand() * 2), avoid).map((index) => ({
-                    index,
-                    turns: 8 + Math.floor(rand() * 8),
-                  }))
-                : []
+            const pattern = (nebulaIndex + systemIndex + stageIndex) % 5
+            const frostingCount =
+              sector.id === 1
+                ? id > 6
+                  ? 2 + Math.floor(rand() * 3) + nebulaIndex
+                  : Math.floor(rand() * 2)
+                : 5 + sector.id * 3 + systemIndex + nebulaIndex + Math.floor(rand() * (sector.id + 2))
+            const frosting = patternFrosting(rand, frostingCount, pattern, avoid)
+            const chocCount =
+              sector.id >= 3
+                ? 1 + sector.id - 3 + systemIndex + Math.floor(rand() * sector.id)
+                : sector.id === 2 && nebulaIndex > 0
+                  ? 1 + Math.floor(rand() * 2)
+                  : 0
+            const chocolate = chocCount > 0 ? pickIndices(rand, chocCount, avoid) : []
+            const swirlCount = sector.id >= 2 ? 1 + nebulaIndex + Math.floor(rand() * sector.id) : 0
+            const swirls = pickIndices(rand, swirlCount, avoid)
+            const lockCount = sector.id >= 2 ? 1 + Math.floor(sector.id / 2) + (n % 2) : 0
+            const locks = pickIndices(rand, lockCount, avoid)
+            const marmCount =
+              sector.id >= 3 ? 2 + Math.floor(rand() * 3) + nebulaIndex : id > 4 ? Math.floor(rand() * 2) : 0
+            const marmalade = pickIndices(rand, marmCount, avoid)
+            const bombCount = sector.id >= 4 ? 1 + Math.floor(rand() * (sector.id - 3)) + (nebulaIndex > 0 ? 1 : 0) : 0
+            const bombs = pickIndices(rand, bombCount, avoid).map((index) => ({
+              index,
+              turns: Math.max(5, 12 - sector.id - systemIndex),
+            }))
             const objective = makeObjective(rand, sector.id, id)
             const jelly = Array.from({ length: 64 }, () => 0)
             if (objective.type === 'jelly') {
+              const maxLayer = sector.id >= 4 ? 2 : 1
               let placed = 0
               let g = 0
-              while (placed < objective.remaining && g++ < 200) {
+              while (placed < objective.remaining && g++ < 400) {
                 const i = Math.floor(rand() * 64)
-                if (jelly[i]! < 2) {
+                if (jelly[i]! < maxLayer) {
                   jelly[i]! += 1
                   placed += 1
                 }
@@ -275,7 +341,8 @@ export function generateCampaign(): CampaignNode {
               bombs,
               jelly,
               ingredients,
-              exits: [1, 2, 3, 4, 5, 6],
+              exits: ingredientExits(sector.id),
+              timeLimit: levelTimeLimit(sector.id, id + n + nebulaIndex),
             })
             levelIds.push(id)
           }

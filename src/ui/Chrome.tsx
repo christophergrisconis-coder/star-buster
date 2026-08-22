@@ -1,13 +1,11 @@
 export function HeaderChrome({
   dark,
-  muted,
   onToggleTheme,
-  onToggleMute,
 }: {
   dark: boolean
-  muted: boolean
+  muted?: boolean
   onToggleTheme: () => void
-  onToggleMute: () => void
+  onToggleMute?: () => void
 }) {
   return (
     <header className="mx-auto flex max-w-[375px] items-center justify-between px-4 py-3">
@@ -15,22 +13,13 @@ export function HeaderChrome({
         <p className="font-display text-[10px] uppercase tracking-[0.35em] text-gold">Deep orbit</p>
         <h1 className="font-display text-2xl leading-none">STAR BUSTER</h1>
       </div>
-      <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={onToggleMute}
-          className="press-burst rounded-full bg-white/10 px-3 py-2 text-xs"
-        >
-          {muted ? 'Audio off' : 'Audio on'}
-        </button>
-        <button
-          type="button"
-          onClick={onToggleTheme}
-          className="press-burst rounded-full bg-white/10 px-3 py-2 text-xs"
-        >
-          {dark ? 'Dark' : 'Light'}
-        </button>
-      </div>
+      <button
+        type="button"
+        onClick={onToggleTheme}
+        className="press-burst rounded-full bg-white/10 px-3 py-2 text-xs"
+      >
+        {dark ? 'Dark' : 'Light'}
+      </button>
     </header>
   )
 }

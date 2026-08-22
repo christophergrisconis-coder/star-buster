@@ -1,43 +1,36 @@
 import { useEffect, useSyncExternalStore } from 'react'
+import { getMuted, persistMuted, subscribeMuted } from './muteStore'
 import { synth } from './synth'
 
-let muted = false
-const listeners = new Set<() => void>()
-
-function emit() {
-  for (const l of listeners) l()
-}
-
 export function useAudio() {
-  const isMuted = useSyncExternalStore(
-    (cb) => {
-      listeners.add(cb)
-      return () => listeners.delete(cb)
-    },
-    () => muted,
-    () => muted,
-  )
+  const isMuted = useSyncExternalStore(subscribeMuted, getMuted, () => false)
 
   useEffect(() => {
+    synth.setMuted(getMuted())
     const unlock = () => {
       void synth.resume()
-      synth.startBgm()
+      if (!getMuted()) synth.startBgm()
       window.removeEventListener('pointerdown', unlock)
     }
     window.addEventListener('pointerdown', unlock, { once: true })
     return () => window.removeEventListener('pointerdown', unlock)
   }, [])
 
+  useEffect(() => {
+    synth.setMuted(isMuted)
+    if (isMuted) synth.stopBgm()
+  }, [isMuted])
+
   const toggle = () => {
-    muted = !muted
-    synth.setMuted(muted)
-    if (!muted) {
+    const next = !getMuted()
+    persistMuted(next)
+    synth.setMuted(next)
+    if (!next) {
       void synth.resume()
       synth.startBgm()
     } else {
       synth.stopBgm()
     }
-    emit()
   }
 
   return {

@@ -1,7 +1,5 @@
 import { rngInt } from './prng'
-import { occupies, type GameState, type SpecialKind } from './types'
-
-const STRIPES: SpecialKind[] = ['striped-h', 'striped-v']
+import { occupies, type GameState } from './types'
 
 export function convertMovesToSpecials(state: GameState): GameState {
   let rng = state.rngState
@@ -21,10 +19,7 @@ export function convertMovesToSpecials(state: GameState): GameState {
     const pick = rngInt(rng, candidates.length)
     rng = pick.state
     const index = candidates.splice(pick.n, 1)[0]!
-    const kindPick = rngInt(rng, 2)
-    rng = kindPick.state
-    const kind: SpecialKind = remaining % 3 === 0 ? 'starfish' : STRIPES[kindPick.n]!
-    cells[index] = { ...cells[index]!, special: kind }
+    cells[index] = { ...cells[index]!, special: 'wrapped' }
     converted.push(index)
     remaining -= 1
   }
@@ -37,7 +32,7 @@ export function convertMovesToSpecials(state: GameState): GameState {
     status: 'finale',
     events: [
       ...state.events,
-      { type: 'finale-convert', indices: converted, kind: 'striped-h' },
+      { type: 'finale-convert', indices: converted, kind: 'wrapped' },
     ],
   }
 }

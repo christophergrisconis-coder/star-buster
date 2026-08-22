@@ -1,3 +1,4 @@
+import { frostingHpFor } from '~/data/difficulty'
 import { nextRng, rngInt } from './prng'
 import {
   BOARD_HEIGHT,
@@ -61,10 +62,9 @@ export function generateInitialCells(
   }
 
   for (const index of config.frosting) {
-    const hp = 1 + (index % 5)
     cells[index] = {
       ...emptyCell(cells[index]!.jelly),
-      frosting: hp,
+      frosting: frostingHpFor(config.sectorId, index),
     }
   }
 

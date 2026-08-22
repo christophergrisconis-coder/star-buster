@@ -1,12 +1,13 @@
 import type { StarColor } from '~/engine/types'
+import { BlazingSun, NovaBomb, SharpStar } from './StarTile'
 
-const FILLS: Record<StarColor, string> = {
-  gold: '#ffd24a',
-  red: '#ff4d4d',
-  green: '#5dff7a',
-  blue: '#4d8dff',
-  purple: '#c45dff',
-  cyan: '#5ce1ff',
+const FILLS: Record<StarColor, { a: string; b: string; c: string; glow: string; brow: string }> = {
+  gold: { a: '#fff8d0', b: '#ffd24a', c: '#c2410c', glow: '#ffd24a', brow: '#7a2e09' },
+  red: { a: '#ffd0d0', b: '#ff4b4b', c: '#7f1d1d', glow: '#ff4b4b', brow: '#3b0a0a' },
+  green: { a: '#d4ffe4', b: '#3dff8a', c: '#14532d', glow: '#3dff8a', brow: '#0b2a16' },
+  blue: { a: '#dbe8ff', b: '#4da3ff', c: '#1e3a8a', glow: '#4da3ff', brow: '#0b1d44' },
+  purple: { a: '#f0e0ff', b: '#c084fc', c: '#6b21a8', glow: '#c084fc', brow: '#2e0a4a' },
+  cyan: { a: '#d9fbff', b: '#22d3ee', c: '#155e75', glow: '#22d3ee', brow: '#083344' },
 }
 
 export function SuperstarSvg({
@@ -18,44 +19,26 @@ export function SuperstarSvg({
   special?: string
   size?: number
 }) {
-  const fill = color ? FILLS[color] : '#ffe9a8'
-  const id = `${color}-${special}-${size}`
+  const id = `hud-${color ?? 'x'}-${special}-${size}`.replace(/[^a-z0-9-]/gi, '')
+  const spec = special as
+    | 'none'
+    | 'striped-h'
+    | 'striped-v'
+    | 'wrapped'
+    | 'color-bomb'
+    | 'starfish'
+  const fill = color ? FILLS[color] : FILLS.gold
   return (
-    <svg width={size} height={size} viewBox="0 0 64 64" className="drop-shadow-[0_4px_8px_rgba(0,0,0,0.45)]">
-      <defs>
-        <radialGradient id={`g-${id}`} cx="35%" cy="30%">
-          <stop offset="0%" stopColor="#fff6d8" />
-          <stop offset="55%" stopColor={fill} />
-          <stop offset="100%" stopColor="#3a1408" />
-        </radialGradient>
-        <filter id={`glow-${id}`}>
-          <feGaussianBlur stdDeviation="1.6" result="b" />
-          <feMerge>
-            <feMergeNode in="b" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-      </defs>
-      <polygon
-        filter={`url(#glow-${id})`}
-        fill={`url(#g-${id})`}
-        stroke={special === 'color-bomb' ? '#fff' : '#fff8'}
-        strokeWidth="1.4"
-        points="32,4 39,24 60,24 43,36 50,56 32,44 14,56 21,36 4,24 25,24"
-      />
-      <ellipse cx="26" cy="22" rx="6" ry="3.2" fill="#fff" opacity="0.55" />
-      {special === 'striped-h' || special === 'striped-v' ? (
-        <path
-          d={special === 'striped-h' ? 'M10 32 H54' : 'M32 8 V56'}
-          stroke="#fff" strokeWidth="3" strokeLinecap="round" opacity="0.85"
-        />
-      ) : null}
-      {special === 'wrapped' ? (
-        <circle cx="32" cy="32" r="10" fill="none" stroke="#fff" strokeWidth="2.2" />
-      ) : null}
-      {special === 'color-bomb' ? (
-        <circle cx="32" cy="32" r="7" fill="#1a1028" stroke="#ffd24a" strokeWidth="2" />
-      ) : null}
-    </svg>
+    <span className="star-idle relative inline-block" style={{ width: size, height: size }}>
+      {spec === 'color-bomb' ? (
+        <NovaBomb id={id} />
+      ) : color === 'gold' ? (
+        <BlazingSun id={id} special={spec} />
+      ) : (
+        <div className="star-3d h-full w-full">
+          <SharpStar id={id} fill={fill} special={spec} />
+        </div>
+      )}
+    </span>
   )
 }

@@ -84,10 +84,7 @@ function classify(
   preferredOrigin?: number,
 ): MatchGroup {
   let kind: MatchGroup['kind'] = 'none'
-  if (hMax >= 5 || vMax >= 5) kind = 'color-bomb'
-  else if (hMax >= 3 && vMax >= 3) kind = 'wrapped'
-  else if (hMax >= 4) kind = 'striped-v'
-  else if (vMax >= 4) kind = 'striped-h'
+  if (hMax >= 4 || vMax >= 4 || (hMax >= 3 && vMax >= 3)) kind = 'wrapped'
   else kind = 'none'
 
   const origin =

@@ -25,9 +25,22 @@ npm run build        # Netlify-ready output
 
 Do not commit `.env`. Apply SQL in the Supabase SQL editor:
 
-`supabase/migrations/001_init.sql`
+`supabase/migrations/001_init.sql` then `supabase/migrations/002_friendships.sql`
 
-Enable Email/Password and Google in Authentication → Providers. Avatars bucket `avatars` is private with per-user folder RLS.
+### Auth providers (dashboard)
+
+In Supabase → Authentication → Providers, enable:
+
+- **Email** (password) — secondary in the app
+- **Google**
+- **Apple**
+- **Azure** (this is Sign in with Microsoft)
+
+Set the Site URL and redirect URLs to `VITE_SITE_URL` (see `.env.example`), including `http://localhost:3000` for local and your production origin. OAuth redirect lands on `/profile`.
+
+Remember me stores the session in `localStorage`. Unchecked uses `sessionStorage`, so the session survives refresh but not a browser restart.
+
+Enable Email/Password plus the OAuth providers above. Avatars bucket `avatars` is private with per-user folder RLS.
 
 ## Deploy (Netlify)
 
@@ -38,10 +51,10 @@ Enable Email/Password and Google in Authentication → Providers. Avatars bucket
 - `src/engine` — deterministic 8×8 reducer, seeded PRNG, hole-free gravity/refill, specials, blockers, objectives, Starburst Finale
 - `src/data` — 250 generated levels nested Sector → Solar system → Nebula → Stage orb → levels
 - `src/hint` — web worker DFS heuristic; server LLM returns one persona sentence
-- `src/audio` — zero-dependency Web Audio synth (no HTML audio tags)
-- `src/fx` + `src/ui` — universe voyage, exploding orbs, 3D CSS stars, combo banners
-- `src/server` — `createServerFn` writes + session cookie guard
-- Guests play levels 1–3 in `localStorage` and merge on auth
+- `src/audio` — zero-dependency Web Audio synth (no HTML audio tags); mute persists in `localStorage` from the header speaker
+- `src/fx` + `src/ui` — universe voyage, exploding orbs, 3D CSS stars, combo banners, Play warp burst
+- `src/server` — `createServerFn` writes + session cookie guard; friends search strips user UUIDs
+- Guests play levels 1–3 in `localStorage` and merge on auth. Signed-in pilots follow a sequential 250-level lock (map + `/play/$levelId` `beforeLoad`).
 
 ## Campaign shape
 

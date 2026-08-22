@@ -18,7 +18,7 @@ export function defaultGuest(): GuestSave {
     stardust: 20,
     lives: 5,
     skin: 'nova-gold',
-    inventory: { hammer: 1, striped: 1 },
+    inventory: { hammer: 1, 'solar-flare': 1 },
     progress: {},
     highestUnlocked: 1,
   }

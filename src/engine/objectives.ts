@@ -55,7 +55,7 @@ export function applyOrderProgress(
       if (order.color && cell.color === order.color && cell.special === 'none') {
         order.count -= 1
       }
-      if (order.special && cell.special === order.special) {
+      if (order.special && cell.special !== 'none') {
         order.count -= 1
       }
     }
@@ -63,7 +63,7 @@ export function applyOrderProgress(
   for (const special of spawnedSpecials) {
     for (const order of orders) {
       if (order.count <= 0) continue
-      if (order.special && order.special === special) order.count -= 1
+      if (order.special && special !== 'none') order.count -= 1
     }
   }
 
@@ -89,12 +89,8 @@ export function describeObjective(objective: Objective): string {
     .join(' · ')
 }
 
-function labelSpecial(s: SpecialKind): string {
-  if (s === 'striped-h' || s === 'striped-v') return 'striped stars'
-  if (s === 'wrapped') return 'wrapped stars'
-  if (s === 'color-bomb') return 'novas'
-  if (s === 'starfish') return 'starfish'
-  return 'stars'
+function labelSpecial(_s: SpecialKind): string {
+  return 'suns'
 }
 
 function labelColor(c: StarColor): string {

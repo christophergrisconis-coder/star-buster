@@ -11,9 +11,13 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as ChallengesRouteImport } from './routes/challenges'
+import { Route as FriendsRouteImport } from './routes/friends'
 import { Route as LeaderboardRouteImport } from './routes/leaderboard'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as StoreRouteImport } from './routes/store'
+import { Route as ChallengesIndexRouteImport } from './routes/challenges.index'
+import { Route as ChallengesNebulaIdRouteImport } from './routes/challenges.$nebulaId'
 import { Route as NebulaNebulaIdRouteImport } from './routes/nebula.$nebulaId'
 import { Route as PlayLevelIdRouteImport } from './routes/play.$levelId'
 import { Route as SystemSystemIdRouteImport } from './routes/system.$systemId'
@@ -26,6 +30,16 @@ const IndexRoute = IndexRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChallengesRoute = ChallengesRouteImport.update({
+  id: '/challenges',
+  path: '/challenges',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FriendsRoute = FriendsRouteImport.update({
+  id: '/friends',
+  path: '/friends',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LeaderboardRoute = LeaderboardRouteImport.update({
@@ -42,6 +56,16 @@ const StoreRoute = StoreRouteImport.update({
   id: '/store',
   path: '/store',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ChallengesIndexRoute = ChallengesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ChallengesRoute,
+} as any)
+const ChallengesNebulaIdRoute = ChallengesNebulaIdRouteImport.update({
+  id: '/$nebulaId',
+  path: '/$nebulaId',
+  getParentRoute: () => ChallengesRoute,
 } as any)
 const NebulaNebulaIdRoute = NebulaNebulaIdRouteImport.update({
   id: '/nebula/$nebulaId',
@@ -62,70 +86,94 @@ const SystemSystemIdRoute = SystemSystemIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/challenges': typeof ChallengesRouteWithChildren
+  '/friends': typeof FriendsRoute
   '/leaderboard': typeof LeaderboardRoute
   '/profile': typeof ProfileRoute
   '/store': typeof StoreRoute
+  '/challenges/$nebulaId': typeof ChallengesNebulaIdRoute
   '/nebula/$nebulaId': typeof NebulaNebulaIdRoute
   '/play/$levelId': typeof PlayLevelIdRoute
   '/system/$systemId': typeof SystemSystemIdRoute
+  '/challenges/': typeof ChallengesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/friends': typeof FriendsRoute
   '/leaderboard': typeof LeaderboardRoute
   '/profile': typeof ProfileRoute
   '/store': typeof StoreRoute
+  '/challenges/$nebulaId': typeof ChallengesNebulaIdRoute
   '/nebula/$nebulaId': typeof NebulaNebulaIdRoute
   '/play/$levelId': typeof PlayLevelIdRoute
   '/system/$systemId': typeof SystemSystemIdRoute
+  '/challenges': typeof ChallengesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/challenges': typeof ChallengesRouteWithChildren
+  '/friends': typeof FriendsRoute
   '/leaderboard': typeof LeaderboardRoute
   '/profile': typeof ProfileRoute
   '/store': typeof StoreRoute
+  '/challenges/$nebulaId': typeof ChallengesNebulaIdRoute
   '/nebula/$nebulaId': typeof NebulaNebulaIdRoute
   '/play/$levelId': typeof PlayLevelIdRoute
   '/system/$systemId': typeof SystemSystemIdRoute
+  '/challenges/': typeof ChallengesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/auth'
+    | '/challenges'
+    | '/friends'
     | '/leaderboard'
     | '/profile'
     | '/store'
+    | '/challenges/$nebulaId'
     | '/nebula/$nebulaId'
     | '/play/$levelId'
     | '/system/$systemId'
+    | '/challenges/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth'
+    | '/friends'
     | '/leaderboard'
     | '/profile'
     | '/store'
+    | '/challenges/$nebulaId'
     | '/nebula/$nebulaId'
     | '/play/$levelId'
     | '/system/$systemId'
+    | '/challenges'
   id:
     | '__root__'
     | '/'
     | '/auth'
+    | '/challenges'
+    | '/friends'
     | '/leaderboard'
     | '/profile'
     | '/store'
+    | '/challenges/$nebulaId'
     | '/nebula/$nebulaId'
     | '/play/$levelId'
     | '/system/$systemId'
+    | '/challenges/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
+  ChallengesRoute: typeof ChallengesRouteWithChildren
+  FriendsRoute: typeof FriendsRoute
   LeaderboardRoute: typeof LeaderboardRoute
   ProfileRoute: typeof ProfileRoute
   StoreRoute: typeof StoreRoute
@@ -150,6 +198,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/challenges': {
+      id: '/challenges'
+      path: '/challenges'
+      fullPath: '/challenges'
+      preLoaderRoute: typeof ChallengesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/friends': {
+      id: '/friends'
+      path: '/friends'
+      fullPath: '/friends'
+      preLoaderRoute: typeof FriendsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/leaderboard': {
       id: '/leaderboard'
       path: '/leaderboard'
@@ -170,6 +232,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/store'
       preLoaderRoute: typeof StoreRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/challenges/': {
+      id: '/challenges/'
+      path: '/'
+      fullPath: '/challenges/'
+      preLoaderRoute: typeof ChallengesIndexRouteImport
+      parentRoute: typeof ChallengesRoute
+    }
+    '/challenges/$nebulaId': {
+      id: '/challenges/$nebulaId'
+      path: '/$nebulaId'
+      fullPath: '/challenges/$nebulaId'
+      preLoaderRoute: typeof ChallengesNebulaIdRouteImport
+      parentRoute: typeof ChallengesRoute
     }
     '/nebula/$nebulaId': {
       id: '/nebula/$nebulaId'
@@ -195,9 +271,25 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface ChallengesRouteChildren {
+  ChallengesNebulaIdRoute: typeof ChallengesNebulaIdRoute
+  ChallengesIndexRoute: typeof ChallengesIndexRoute
+}
+
+const ChallengesRouteChildren: ChallengesRouteChildren = {
+  ChallengesNebulaIdRoute: ChallengesNebulaIdRoute,
+  ChallengesIndexRoute: ChallengesIndexRoute,
+}
+
+const ChallengesRouteWithChildren = ChallengesRoute._addFileChildren(
+  ChallengesRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
+  ChallengesRoute: ChallengesRouteWithChildren,
+  FriendsRoute: FriendsRoute,
   LeaderboardRoute: LeaderboardRoute,
   ProfileRoute: ProfileRoute,
   StoreRoute: StoreRoute,

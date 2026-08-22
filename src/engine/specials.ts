@@ -106,31 +106,17 @@ export function allBoardIndices(width: number, height: number): Set<number> {
   return s
 }
 
+export const SUN_BLAST_RADIUS = 2
+export const TWIN_SUN_BLAST_RADIUS = 3
+
+export function isSunSpecial(special: SpecialKind): boolean {
+  return special !== 'none'
+}
+
 export function comboForSpecials(
   a: SpecialKind,
   b: SpecialKind,
-):
-  | { type: 'cross' }
-  | { type: 'giant-cross' }
-  | { type: 'wrapped-5' }
-  | { type: 'bomb-stripe'; colorFrom: 'a' | 'b' }
-  | { type: 'bomb-wrap'; colorFrom: 'a' | 'b' }
-  | { type: 'wipe' }
-  | { type: 'bomb-color'; colorFrom: 'a' | 'b' }
-  | null {
-  const striped = (s: SpecialKind) => s === 'striped-h' || s === 'striped-v'
-  const bomb = (s: SpecialKind) => s === 'color-bomb'
-  const wrapped = (s: SpecialKind) => s === 'wrapped'
-
-  if (striped(a) && striped(b)) return { type: 'cross' }
-  if ((striped(a) && wrapped(b)) || (striped(b) && wrapped(a))) return { type: 'giant-cross' }
-  if (wrapped(a) && wrapped(b)) return { type: 'wrapped-5' }
-  if (bomb(a) && bomb(b)) return { type: 'wipe' }
-  if (bomb(a) && striped(b)) return { type: 'bomb-stripe', colorFrom: 'b' }
-  if (bomb(b) && striped(a)) return { type: 'bomb-stripe', colorFrom: 'a' }
-  if (bomb(a) && wrapped(b)) return { type: 'bomb-wrap', colorFrom: 'b' }
-  if (bomb(b) && wrapped(a)) return { type: 'bomb-wrap', colorFrom: 'a' }
-  if (bomb(a) && !bomb(b)) return { type: 'bomb-color', colorFrom: 'b' }
-  if (bomb(b) && !bomb(a)) return { type: 'bomb-color', colorFrom: 'a' }
+): { type: 'wrapped-5' } | null {
+  if (isSunSpecial(a) && isSunSpecial(b)) return { type: 'wrapped-5' }
   return null
 }

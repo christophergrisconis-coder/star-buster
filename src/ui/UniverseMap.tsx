@@ -24,7 +24,7 @@ export function UniverseMap({
               <p className="font-display text-[10px] uppercase tracking-[0.3em] text-gold">
                 Sector {sector.id}
               </p>
-              <h2 className="font-display text-2xl" style={{ color: sector.accent }}>
+              <h2 className="font-display text-2xl" style={{ color: sector.color }}>
                 {sector.name}
               </h2>
               <p className="text-sm text-white/60">{sector.tagline}</p>
@@ -47,7 +47,7 @@ export function UniverseMap({
                 >
                   <span
                     className="relative grid h-12 w-12 place-items-center rounded-full shadow-[0_0_24px_#ff2bd688]"
-                    style={{ background: `radial-gradient(circle, ${sector.accent}, #120c1c)` }}
+                    style={{ background: `radial-gradient(circle, ${sector.color}, #120c1c)` }}
                   >
                     <SuperstarSvg color={si % 2 ? 'gold' : 'cyan'} size={28} />
                   </span>
@@ -67,7 +67,7 @@ export function UniverseMap({
         Voyage complete when all <b className="text-gold">{LEVELS.length}</b> levels of the solar
         map are cleared. Guests may chart levels 1–3.
       </div>
-      <Link to="/play/$levelId" params={{ levelId: '1' }} className="hidden">
+      <Link to="/play/$levelId" params={{ levelId: '1' }} search={{ challenge: undefined }} className="hidden">
         play
       </Link>
     </div>

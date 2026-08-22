@@ -24,13 +24,15 @@ export {
   idx,
   isHole,
   isMatchable,
+  isPowerPlay,
   isSwappable,
   occupies,
   starCell,
   xy,
 } from './types'
 export { nextRng, rngInt, rngPick } from './prng'
-export { applyGravity } from './gravity'
+export { applyGravity, gravityLeavesNoUnsupportedFloat } from './gravity'
+export { refillBoard, playableHasHoles } from './board'
 export { findMatches, hasAnyMatch } from './match'
 export { createGame, reduce, assertNoHoles, serializeBoard } from './reducer'
 export { describeObjective, objectiveComplete } from './objectives'

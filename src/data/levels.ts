@@ -1,5 +1,6 @@
 import type { LevelConfig, Objective, StarColor } from '~/engine/types'
 import { STAR_COLORS as COLORS } from '~/engine/types'
+import { ingredientExits, levelTimeLimit, sectorDifficulty } from './difficulty'
 import { SECTORS, UNIVERSE } from './universe'
 
 function hash(n: number): number {
@@ -28,6 +29,34 @@ function scatter(seed: number, count: number, avoid: Set<number> = new Set()): n
   return out
 }
 
+function patternFrostingLevels(seed: number, count: number, pattern: number, avoid: Set<number>): number[] {
+  const wanted: number[] = []
+  const tryAdd = (i: number) => {
+    if (i < 0 || i > 63 || avoid.has(i) || wanted.includes(i)) return
+    wanted.push(i)
+  }
+  if (pattern === 0) {
+    const col = 1 + (seed % 3)
+    for (let y = 1; y < 7; y++) tryAdd(col + y * 8)
+    for (let y = 2; y < 6; y++) tryAdd((col + 3) % 8 + y * 8)
+  } else if (pattern === 1) {
+    for (let x = 1; x < 7; x++) {
+      tryAdd(x + 8)
+      tryAdd(x + 48)
+    }
+  } else if (pattern === 2) {
+    for (let i = 0; i < 8; i++) tryAdd(i + i * 8)
+  } else if (pattern === 3) {
+    const ox = seed % 2 === 0 ? 0 : 4
+    for (let y = 1; y < 7; y++) {
+      for (let x = 0; x < 4; x++) if ((x + y) % 2 === 0) tryAdd(ox + x + y * 8)
+    }
+  }
+  for (const i of wanted) avoid.add(i)
+  if (wanted.length >= count) return wanted.slice(0, count)
+  return [...wanted, ...scatter(seed + 41, count - wanted.length, avoid)]
+}
+
 function objectiveFor(id: number, sectorId: number, seed: number): {
   objective: Objective
   jelly: number[]
@@ -36,9 +65,10 @@ function objectiveFor(id: number, sectorId: number, seed: number): {
   const roll = id % 10
   const jelly = Array.from({ length: 64 }, () => 0)
   if (roll < 4) {
-    const layers = sectorId >= 4 ? 2 : 1
+    const layers = sectorId >= 3 ? 2 : 1
+    const step = sectorId >= 4 ? 3 : 4
     for (let i = 0; i < 64; i++) {
-      if (i % 9 !== 4) jelly[i] = layers
+      if (i % step !== 0) jelly[i] = i % 9 === 4 ? layers : Math.min(layers, 1)
     }
     const remaining = jelly.reduce((n, v) => n + v, 0)
     return { objective: { type: 'jelly', remaining }, jelly, ingredients: [] }
@@ -51,7 +81,7 @@ function objectiveFor(id: number, sectorId: number, seed: number): {
         ? [
             { color, count },
             {
-              special: (id % 2 === 0 ? 'striped-h' : 'wrapped') as const,
+              special: 'wrapped' as const,
               count: 1 + (sectorId >= 4 ? 1 : 0),
             },
           ]
@@ -71,23 +101,37 @@ export function generateLevel(id: number): LevelConfig {
   const sector = SECTORS.find((s) => s.id === system.sectorId)!
   const local = stage.levelIds.indexOf(id)
   const seed = hash(id * 997 + sector.id * 131)
+  const nebulaIndex = UNIVERSE.nebulas.filter((n) => n.systemId === system.id).findIndex((n) => n.id === nebula.id)
+  const systemIndex = UNIVERSE.systems.filter((s) => s.sectorId === sector.id).findIndex((s) => s.id === system.id)
+  const diff = sectorDifficulty(sector.id)
+  const pattern = (nebulaIndex + systemIndex + local) % 5
 
-  const moves = Math.max(12, 28 - sector.id * 3 - Math.floor(local / 2) + (id % 3))
+  const moves = Math.max(
+    diff.minMoves,
+    28 - sector.id * 4 - systemIndex - Math.floor(local / 2) + (id % 3),
+  )
   const avoid = new Set<number>()
-  const frostCount = sector.id === 1 ? (id > 8 ? 4 : 0) : 6 + sector.id * 3 + (id % 4)
-  const frosting = scatter(seed, frostCount, avoid)
+  const frostCount =
+    sector.id === 1 ? (id > 8 ? 3 + nebulaIndex : 0) : 6 + sector.id * 3 + systemIndex + (id % 4)
+  const frosting =
+    sector.id === 1
+      ? scatter(seed, frostCount, avoid)
+      : patternFrostingLevels(seed, frostCount, pattern, avoid)
   const chocCount =
-    sector.id >= 3 ? 2 + (id % 3) + (sector.id - 3) : sector.id === 2 && id % 5 === 0 ? 2 : 0
+    sector.id >= 3 ? 2 + (id % 3) + (sector.id - 3) + nebulaIndex : sector.id === 2 && id % 5 === 0 ? 2 : 0
   const chocolate = scatter(seed + 9, chocCount, avoid)
-  const swirlCount = sector.id >= 2 ? 1 + (id % 3) : 0
+  const swirlCount = sector.id >= 2 ? 1 + (id % 3) + Math.floor(systemIndex / 2) : 0
   const swirls = scatter(seed + 21, swirlCount, avoid)
-  const lockCount = sector.id >= 2 ? (id % 4 === 0 ? 3 : 1) : 0
+  const lockCount = sector.id >= 2 ? (id % 4 === 0 ? 2 + sector.id - 1 : 1) : 0
   const locks = scatter(seed + 33, lockCount, avoid)
-  const marmCount = sector.id >= 3 ? 2 : 0
+  const marmCount = sector.id >= 3 ? 2 + nebulaIndex : 0
   const marmalade = scatter(seed + 45, marmCount, avoid)
   const bombs =
-    sector.id >= 4 && id % 4 === 0
-      ? [{ index: scatter(seed + 77, 1, avoid)[0] ?? 10, turns: Math.max(6, 14 - sector.id) }]
+    sector.id >= 4
+      ? scatter(seed + 77, 1 + (id % 3 === 0 ? 1 : 0) + (sector.id >= 5 ? 1 : 0), avoid).map((index) => ({
+          index,
+          turns: Math.max(5, 13 - sector.id),
+        }))
       : []
 
   const { objective, jelly, ingredients } = objectiveFor(id, sector.id, seed)
@@ -102,7 +146,7 @@ export function generateLevel(id: number): LevelConfig {
     nebulaId: nebula.id,
     stageId: stage.id,
     moves,
-    colorCount: sector.colorCount,
+    colorCount: diff.colorCount,
     rewardCap: sector.rewardCap,
     objective,
     frosting,
@@ -113,7 +157,8 @@ export function generateLevel(id: number): LevelConfig {
     bombs,
     jelly,
     ingredients,
-    exits: [1, 2, 5, 6],
+    exits: ingredientExits(sector.id),
+    timeLimit: levelTimeLimit(sector.id, id + local),
   }
 }
 

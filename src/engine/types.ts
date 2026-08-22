@@ -84,6 +84,7 @@ export type EngineEvent =
       spawnedSpecials: SpawnedSpecial[]
       gravity: GravityMove[]
       refill: RefillCell[]
+      groups: number
       word?: ComboWord
     }
   | { type: 'chocolate-spread'; from: number; to: number }
@@ -92,6 +93,9 @@ export type EngineEvent =
   | { type: 'status'; status: GameStatus; reason?: string }
   | { type: 'reward'; coins: number; stardust: number; capped: boolean }
   | { type: 'ingredient-collect'; indices: number[] }
+  | { type: 'special-combo'; kind: string }
+  | { type: 'comet-tail'; value: number; decayed?: boolean }
+  | { type: 'kit-drop'; item: string; index: number }
 
 export interface LevelConfig {
   id: number
@@ -114,6 +118,7 @@ export interface LevelConfig {
   jelly: number[]
   ingredients: number[]
   exits: number[]
+  timeLimit: number
 }
 
 export interface GameState {
@@ -123,7 +128,7 @@ export interface GameState {
   movesLeft: number
   score: number
   combo: number
-  streak: number
+  cometTail: number
   seed: number
   rngState: number
   colorCount: number
@@ -137,15 +142,23 @@ export interface GameState {
   exits: boolean[]
   levelId: number
   sectorId: number
+  timeLeft: number
+  timeLimit: number
+  kitDrops: number
 }
 
 export type EngineAction =
   | { type: 'swap'; a: number; b: number }
   | { type: 'hammer'; index: number }
+  | { type: 'well'; index: number }
+  | { type: 'shuffle' }
   | { type: 'color-splash'; index: number }
   | { type: 'add-moves'; count: number }
   | { type: 'spawn-special'; index: number; special: SpecialKind }
+  | { type: 'ignite-special'; index: number }
   | { type: 'tick-finale' }
+  | { type: 'decay-comet-tail' }
+  | { type: 'tick-clock' }
 
 export function idx(x: number, y: number, width = BOARD_WIDTH): number {
   return x + y * width
@@ -224,21 +237,18 @@ export function isHole(cell: Cell): boolean {
 }
 
 export function isMatchable(cell: Cell): boolean {
-  return (
-    cell.color !== null &&
-    !cell.swirl &&
-    !cell.chocolate &&
-    cell.frosting === 0 &&
-    cell.special !== 'color-bomb'
-  )
+  return cell.color !== null && !cell.swirl && !cell.chocolate && cell.frosting === 0
+}
+
+export function isPowerPlay(cell: Cell): boolean {
+  return cell.special !== 'none'
 }
 
 export function isSwappable(cell: Cell): boolean {
   if (cell.frosting > 0) return false
   if (cell.chocolate) return false
-  if (cell.lock) return false
-  if (cell.marmalade) return false
-  return occupies(cell) || cell.special === 'color-bomb'
+  if (cell.swirl) return false
+  return occupies(cell)
 }
 
 export function neighbors4(
@@ -259,18 +269,18 @@ export function adjacent(a: number, b: number, width = BOARD_WIDTH): boolean {
   return neighbors4(a, width).includes(b)
 }
 
-export function comboWord(combo: number): ComboWord | undefined {
+export function comboWord(combo: number, groups = 1): ComboWord | undefined {
   if (combo >= 7) return 'GALAXY BUSTER'
   if (combo === 6) return 'SUPERNOVA'
   if (combo === 5) return 'STELLAR'
   if (combo === 4) return 'SUPERSTAR'
   if (combo === 3) return 'SWEET'
-  if (combo === 2) return 'NICE'
+  if (combo === 2 || (combo === 1 && groups >= 2)) return 'NICE'
   return undefined
 }
 
-export function blastForCombo(combo: number): BlastSize {
-  if (combo >= 5) return 'L'
-  if (combo >= 3) return 'M'
+export function blastForCombo(combo: number, groups = 1, destroyed = 0): BlastSize {
+  if (combo >= 5 || groups >= 3 || destroyed >= 12) return 'L'
+  if (combo >= 3 || groups >= 2 || destroyed >= 6) return 'M'
   return 'S'
 }
