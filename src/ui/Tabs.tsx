@@ -63,7 +63,7 @@ export function Tabs() {
   const playing = pathname.startsWith('/play')
   return (
     <nav className="chrome-nav sticky top-0 z-40">
-      <div className="mx-auto flex max-w-[375px] items-stretch gap-1 px-1.5">
+      <div className="mx-auto flex max-w-[430px] items-stretch gap-1 px-1.5">
         {TABS.map((tab) => {
           const active = tab.match(pathname)
           return (
@@ -81,7 +81,7 @@ export function Tabs() {
         })}
       </div>
       {playing ? null : (
-        <div className="mx-auto max-w-[375px] px-2">
+        <div className="mx-auto max-w-[430px] px-2">
           <PlayCta />
         </div>
       )}

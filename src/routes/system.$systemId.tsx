@@ -1,10 +1,11 @@
 import { Link, createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
-import { useState } from 'react'
 import { CAMPAIGN } from '~/data/campaign'
-import { explodeThen } from '~/fx/orbExplode'
+import { requestWarpThen } from '~/fx/warpBurst'
 import { isNebulaUnlocked, isSystemUnlocked } from '~/lib/lock'
 import { getProgress } from '~/lib/progress'
 import { denyEntry } from '~/ui/deny'
+import { PlanetGlobe } from '~/ui/PlanetGlobe'
+import { nebulaTheme, planetLook } from '~/ui/planetLooks'
 
 export const Route = createFileRoute('/system/$systemId')({
   beforeLoad: ({ params }) => {
@@ -18,54 +19,51 @@ function SystemPage() {
   const { systemId } = Route.useParams()
   const system = CAMPAIGN.systems.find((s) => s.id === systemId)
   const navigate = useNavigate()
-  const [burst, setBurst] = useState<string | null>(null)
   const progress = typeof window === 'undefined' ? { levels: {}, guest: true } : getProgress()
   if (!system) return <p className="p-4">Unknown system.</p>
   const nebulas = CAMPAIGN.nebulas.filter((n) => n.systemId === system.id)
+  const sector = CAMPAIGN.sectors.find((s) => s.id === system.sectorId)
 
+  const theme = nebulaTheme(system.id, sector?.color)
   return (
-    <div className="relative min-h-[70vh]">
-      <div className="relative z-10 space-y-4 px-4 pt-4">
-        <Link to="/" className="text-[12px] text-white/60">
-          ← Universe
-        </Link>
-        <h1 className="display text-[28px] text-gold">{system.name}</h1>
-        <p className="text-[13px] text-white/70">Each nebula hides exploding stage orbs.</p>
-        <div className="flex flex-wrap gap-4">
-          {nebulas.map((n) => {
-            const open = isNebulaUnlocked(n.id, progress)
-            return (
-              <button
-                key={n.id}
-                type="button"
-                onClick={(e) => {
-                  if (!open) {
-                    denyEntry(e.currentTarget)
-                    return
-                  }
-                  setBurst(n.id)
-                  explodeThen(() => navigate({ to: '/nebula/$nebulaId', params: { nebulaId: n.id } }))
-                }}
-                className={`h-20 w-20 rounded-full ${burst === n.id ? 'star-explode' : ''} ${
-                  open ? '' : 'nebula-silhouette'
-                }`}
-                style={{
-                  background: 'radial-gradient(circle at 30% 28%, #fff, #ff2bd6 40%, #1a1230)',
-                  boxShadow: open ? '0 0 24px #ff2bd688' : 'none',
-                  animation: open ? 'orb-pulse 3s ease-in-out infinite' : undefined,
-                  opacity: open ? 1 : 0.4,
-                }}
-              >
-                <span className="sr-only">{open ? n.name : `${n.name} locked`}</span>
-              </button>
-            )
-          })}
-        </div>
-        <ul className="space-y-1 text-[13px] text-white/70">
-          {nebulas.map((n) => (
-            <li key={n.id}>{isNebulaUnlocked(n.id, progress) ? n.name : '·····'}</li>
-          ))}
-        </ul>
+    <div className="map-page">
+      <div className="pov-nebula" aria-hidden>
+        <span className="pov-cloud pov-cloud-a" style={{ background: theme.mist, opacity: 0.4 }} />
+        <span className="pov-cloud pov-cloud-b" style={{ background: theme.bloom, opacity: 0.28 }} />
+      </div>
+      <Link to="/" className="relative z-[1] text-[12px] text-white/45">
+        ← Voyage
+      </Link>
+      <p className="pov-kicker relative z-[1] mt-3">{sector?.name}</p>
+      <h1 className="relative z-[1]">{system.name}</h1>
+      <p className="pov-deck relative z-[1] mt-2">Approach a nebula to continue the trail.</p>
+      <div className="map-worlds">
+        {nebulas.map((n, i) => {
+          const open = isNebulaUnlocked(n.id, progress)
+          const first = CAMPAIGN.levels.find((l) => l.nebulaId === n.id)
+          return (
+            <button
+              key={n.id}
+              type="button"
+              className="map-world"
+              onClick={(e) => {
+                if (!open) {
+                  denyEntry(e.currentTarget)
+                  return
+                }
+                requestWarpThen(() => navigate({ to: '/nebula/$nebulaId', params: { nebulaId: n.id } }))
+              }}
+            >
+              <PlanetGlobe look={planetLook(first?.id ?? i + 11)} size="thumb" locked={!open} />
+              <span>
+                <span className="block text-[16px] text-[#efe6d2]">{open ? n.name : 'Uncharted'}</span>
+                <span className="block text-[11px] uppercase tracking-[0.16em] text-white/40">
+                  {open ? 'Nebula' : 'Sealed'}
+                </span>
+              </span>
+            </button>
+          )
+        })}
       </div>
     </div>
   )

@@ -30,8 +30,8 @@ export function ProfileSkeleton() {
 
 export function BoardSkeleton() {
   return (
-    <div className="mx-auto grid w-[min(100%,360px)] grid-cols-8 gap-1 p-2">
-      {Array.from({ length: 64 }, (_, i) => (
+    <div className="mx-auto grid w-[min(100%,400px)] grid-cols-9 gap-1 p-2">
+      {Array.from({ length: 81 }, (_, i) => (
         <svg key={i} viewBox="0 0 32 32" className="aspect-square animate-pulse">
           <path
             d="M16 2 L19 12 L30 12 L21 18 L24 28 L16 22 L8 28 L11 18 L2 12 L13 12 Z"

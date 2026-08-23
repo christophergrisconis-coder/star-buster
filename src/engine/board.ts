@@ -1,4 +1,5 @@
 import { frostingHpFor } from '~/data/difficulty'
+import { findMatches, hasAnyMatch, hasLegalSwap } from './match'
 import { nextRng, rngInt } from './prng'
 import {
   BOARD_HEIGHT,
@@ -8,6 +9,7 @@ import {
   cloneCell,
   emptyCell,
   isHole,
+  isMatchable,
   starCell,
   type Cell,
   type GameState,
@@ -20,6 +22,37 @@ export function newStar(color: StarColor, jelly = 0): Cell {
   return starCell(color, jelly)
 }
 
+function wouldMatchAt(
+  cells: Cell[],
+  index: number,
+  color: StarColor,
+  width: number,
+  height: number,
+): boolean {
+  const prev = cells[index]!
+  cells[index] = newStar(color, prev.jelly)
+  const hit = findMatches(cells, width, height).some((g) => g.indices.includes(index))
+  cells[index] = prev
+  return hit
+}
+
+function pickSafeRefillColor(
+  cells: Cell[],
+  index: number,
+  colors: StarColor[],
+  rng: number,
+  width: number,
+  height: number,
+): { color: StarColor; rng: number } {
+  const start = rngInt(rng, colors.length)
+  rng = start.state
+  for (let k = 0; k < colors.length; k++) {
+    const color = colors[(start.n + k) % colors.length]!
+    if (!wouldMatchAt(cells, index, color, width, height)) return { color, rng }
+  }
+  return { color: colors[start.n]!, rng }
+}
+
 export function refillBoard(state: GameState): {
   cells: Cell[]
   rngState: number
@@ -29,18 +62,22 @@ export function refillBoard(state: GameState): {
   let rng = state.rngState
   const refill: RefillCell[] = []
   const colors = STAR_COLORS.slice(0, state.colorCount)
+  const holes: number[] = []
 
-  for (let y = 0; y < state.height; y++) {
+  // Fill lowest holes first so each new star can see settled neighbors below.
+  for (let y = state.height - 1; y >= 0; y--) {
     for (let x = 0; x < state.width; x++) {
       const i = x + y * state.width
-      if (!isHole(cells[i]!)) continue
-      const r = rngInt(rng, colors.length)
-      rng = r.state
-      const color = colors[r.n]!
-      const jelly = cells[i]!.jelly
-      cells[i] = newStar(color, jelly)
-      refill.push({ index: i, color, special: 'none' })
+      if (isHole(cells[i]!)) holes.push(i)
     }
+  }
+
+  for (const i of holes) {
+    const picked = pickSafeRefillColor(cells, i, colors, rng, state.width, state.height)
+    rng = picked.rng
+    const jelly = cells[i]!.jelly
+    cells[i] = newStar(picked.color, jelly)
+    refill.push({ index: i, color: picked.color, special: 'none' })
   }
 
   return { cells, rngState: rng, refill }
@@ -86,7 +123,7 @@ export function generateInitialCells(
     !cells[i]!.swirl &&
     !cells[i]!.ingredient
 
-  for (let attempt = 0; attempt < 40; attempt++) {
+  for (let attempt = 0; attempt < 80; attempt++) {
     let attemptRng = rng
     for (let i = 0; i < BOARD_SIZE; i++) {
       if (!fillable(i)) continue
@@ -96,10 +133,13 @@ export function generateInitialCells(
         ...newStar(colors[r.n]!, cells[i]!.jelly),
       }
     }
-    if (!hasImmediateMatch(cells, config.colorCount)) {
+    const broken = breakOpeningMatches(cells, colors, attemptRng)
+    attemptRng = broken.rng
+    if (!hasAnyMatch(cells, BOARD_WIDTH, BOARD_HEIGHT) && hasLegalSwap(cells, BOARD_WIDTH, BOARD_HEIGHT)) {
       rng = attemptRng
       break
     }
+    rng = attemptRng
   }
 
   for (const index of config.marmalade) {
@@ -117,37 +157,28 @@ export function generateInitialCells(
   return { cells, rngState: rng }
 }
 
-function hasImmediateMatch(cells: Cell[], _colorCount: number): boolean {
-  for (let y = 0; y < BOARD_HEIGHT; y++) {
-    for (let x = 0; x < BOARD_WIDTH; x++) {
-      const i = x + y * BOARD_WIDTH
-      const cell = cells[i]!
-      if (!cell.color || cell.frosting || cell.swirl || cell.chocolate) continue
-      if (
-        x >= 2 &&
-        cells[i - 1]!.color === cell.color &&
-        cells[i - 2]!.color === cell.color &&
-        isSameMatchable(cells[i - 1]!) &&
-        isSameMatchable(cells[i - 2]!)
-      ) {
-        return true
-      }
-      if (
-        y >= 2 &&
-        cells[i - BOARD_WIDTH]!.color === cell.color &&
-        cells[i - BOARD_WIDTH * 2]!.color === cell.color &&
-        isSameMatchable(cells[i - BOARD_WIDTH]!) &&
-        isSameMatchable(cells[i - BOARD_WIDTH * 2]!)
-      ) {
-        return true
-      }
+function breakOpeningMatches(
+  cells: Cell[],
+  colors: StarColor[],
+  rng: number,
+): { rng: number } {
+  for (let guard = 0; guard < 32; guard++) {
+    const matches = findMatches(cells, BOARD_WIDTH, BOARD_HEIGHT)
+    if (matches.length === 0) break
+    for (const group of matches) {
+      const i = group.indices[Math.floor(group.indices.length / 2)]!
+      if (!isMatchable(cells[i]!)) continue
+      const forbidden = new Set(
+        group.indices.map((idx) => cells[idx]!.color).filter((c): c is StarColor => !!c),
+      )
+      const choices = colors.filter((c) => !forbidden.has(c))
+      const palette = choices.length ? choices : colors
+      const r = rngInt(rng, palette.length)
+      rng = r.state
+      cells[i] = { ...cells[i]!, color: palette[r.n]! }
     }
   }
-  return false
-}
-
-function isSameMatchable(cell: Cell): boolean {
-  return !!cell.color && !cell.swirl && !cell.chocolate && cell.frosting === 0
+  return { rng }
 }
 
 export function seedShuffle<T>(items: T[], seed: number): T[] {

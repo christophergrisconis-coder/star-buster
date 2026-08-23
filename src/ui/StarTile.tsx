@@ -325,8 +325,11 @@ export function StarTile({
           skin === 'aurora' ? 'hue-rotate(28deg)' : skin === 'void' ? 'saturate(1.4)' : undefined,
       }}
     >
-      {cell.jelly > 0 ? (
-        <div className="absolute inset-1 rounded-full bg-[#5ce1ff]/25 ring-1 ring-[#5ce1ff]/50" />
+      {cell.jelly > 0 ? <div className="jelly-well jelly-well--tile" /> : null}
+      {cell.ingredient ? (
+        <span className="absolute bottom-0 left-1/2 z-10 -translate-x-1/2 rounded-full bg-[#ff9f1c] px-1 text-[8px] font-extrabold text-void">
+          ▼
+        </span>
       ) : null}
 
       {cell.frosting > 0 ? (

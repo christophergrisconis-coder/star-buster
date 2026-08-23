@@ -12,6 +12,11 @@ describe('kit drops', () => {
     expect(kitDropChance(1, 1, 'S')).toBeLessThan(kitDropChance(1, 4, 'L'))
   })
 
+  it('can force the first novice drop', () => {
+    const roll = rollKitDrop(1, 1, 1, 'S', 0, true)
+    expect(roll.item).toBeTruthy()
+  })
+
   it('stops after the sector cap', () => {
     const blocked = rollKitDrop(99, 5, 4, 'L', kitDropCap(5))
     expect(blocked.item).toBeNull()

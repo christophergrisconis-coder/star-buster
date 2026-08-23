@@ -33,6 +33,6 @@ export {
 export { nextRng, rngInt, rngPick } from './prng'
 export { applyGravity, gravityLeavesNoUnsupportedFloat } from './gravity'
 export { refillBoard, playableHasHoles } from './board'
-export { findMatches, hasAnyMatch } from './match'
+export { findMatches, hasAnyMatch, hasLegalSwap } from './match'
 export { createGame, reduce, assertNoHoles, serializeBoard } from './reducer'
-export { describeObjective, objectiveComplete } from './objectives'
+export { describeObjective, howToClear, objectiveComplete } from './objectives'

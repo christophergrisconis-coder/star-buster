@@ -36,7 +36,7 @@ export function Shell({ children }: { children: ReactNode }) {
     <>
       <UniverseBackground />
       <WarpOverlay />
-      <div className="app-frame relative z-10 mx-auto min-h-dvh max-w-[375px] pb-10">
+      <div className="app-frame relative z-10 mx-auto flex min-h-dvh max-w-[430px] flex-col pb-10">
         <header className="relative z-20 flex items-center justify-between px-3 pt-3">
           <Link to="/" className="display text-[17px] tracking-[0.04em] text-gold">
             Star Buster
@@ -47,7 +47,7 @@ export function Shell({ children }: { children: ReactNode }) {
           </div>
         </header>
         <Tabs />
-        <div className="relative z-10">{children}</div>
+        <div className="app-main relative z-10 min-h-0 flex-1">{children}</div>
       </div>
     </>
   )

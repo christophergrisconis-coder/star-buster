@@ -1,11 +1,14 @@
 import { rngInt } from './prng'
 import { occupies, type GameState } from './types'
 
+/** Cap the starburst so leftover moves do not wipe the board in one clip. */
+export const FINALE_SUN_CAP = 6
+
 export function convertMovesToSpecials(state: GameState): GameState {
   let rng = state.rngState
   const cells = state.cells.map((c) => ({ ...c }))
   const converted: number[] = []
-  let remaining = state.movesLeft
+  let remaining = Math.min(state.movesLeft, FINALE_SUN_CAP)
 
   const candidates: number[] = []
   for (let i = 0; i < cells.length; i++) {

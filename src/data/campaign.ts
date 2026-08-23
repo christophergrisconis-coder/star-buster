@@ -1,5 +1,5 @@
 import type { LevelConfig, Objective, StarColor } from '~/engine/types'
-import { STAR_COLORS } from '~/engine/types'
+import { BOARD_HEIGHT, BOARD_SIZE, BOARD_WIDTH, STAR_COLORS } from '~/engine/types'
 import {
   ingredientExits,
   levelTimeLimit,
@@ -168,7 +168,7 @@ function pickIndices(rand: () => number, count: number, avoid = new Set<number>(
   const out: number[] = []
   let guard = 0
   while (out.length < count && guard++ < 400) {
-    const i = Math.floor(rand() * 64)
+    const i = Math.floor(rand() * BOARD_SIZE)
     if (avoid.has(i)) continue
     avoid.add(i)
     out.push(i)
@@ -177,9 +177,12 @@ function pickIndices(rand: () => number, count: number, avoid = new Set<number>(
 }
 
 function makeObjective(rand: () => number, sectorId: number, id: number): Objective {
+  if (id <= 10) {
+    return { type: 'jelly', remaining: id <= 3 ? 8 : id <= 6 ? 10 : 12 }
+  }
   const roll = id % 3
   if (roll === 0) {
-    return { type: 'jelly', remaining: 16 + sectorId * 10 + Math.floor(rand() * 10) }
+    return { type: 'jelly', remaining: 12 + sectorId * 8 + Math.floor(rand() * 8) }
   }
   if (roll === 1) {
     return { type: 'ingredient', remaining: 2 + Math.floor(sectorId / 2) + (rand() > 0.45 ? 1 : 0) }
@@ -203,32 +206,61 @@ function patternFrosting(
 ): number[] {
   const wanted: number[] = []
   const tryAdd = (i: number) => {
-    if (i < 0 || i > 63 || avoid.has(i) || wanted.includes(i)) return
+    if (i < 0 || i >= BOARD_SIZE || avoid.has(i) || wanted.includes(i)) return
     wanted.push(i)
   }
-  if (pattern === 0) {
+  const kind = pattern % 10
+  const inner = BOARD_WIDTH - 2
+  if (kind === 0) {
     const col = 1 + (Math.floor(rand() * 3) % 3)
-    for (let y = 1; y < 7; y++) tryAdd(col + y * 8)
-    for (let y = 2; y < 6; y++) tryAdd(col + 3 + y * 8)
-  } else if (pattern === 1) {
-    for (let x = 1; x < 7; x++) {
-      tryAdd(x + 8)
-      tryAdd(x + 6 * 8)
+    for (let y = 1; y < BOARD_HEIGHT - 1; y++) tryAdd(col + y * BOARD_WIDTH)
+    for (let y = 2; y < BOARD_HEIGHT - 2; y++) tryAdd(col + 3 + y * BOARD_WIDTH)
+  } else if (kind === 1) {
+    for (let x = 1; x < inner; x++) {
+      tryAdd(x + BOARD_WIDTH)
+      tryAdd(x + (BOARD_HEIGHT - 2) * BOARD_WIDTH)
     }
-    for (let y = 2; y < 6; y++) {
-      tryAdd(1 + y * 8)
-      tryAdd(6 + y * 8)
+    for (let y = 2; y < BOARD_HEIGHT - 2; y++) {
+      tryAdd(1 + y * BOARD_WIDTH)
+      tryAdd(inner - 1 + y * BOARD_WIDTH)
     }
-  } else if (pattern === 2) {
-    for (let i = 0; i < 8; i++) tryAdd(i + i * 8)
-    for (let i = 0; i < 6; i++) tryAdd(i + 2 + i * 8)
-  } else if (pattern === 3) {
-    const ox = rand() > 0.5 ? 0 : 4
-    const oy = rand() > 0.5 ? 0 : 4
+  } else if (kind === 2) {
+    for (let i = 0; i < BOARD_WIDTH; i++) tryAdd(i + i * BOARD_WIDTH)
+    for (let i = 0; i < BOARD_WIDTH - 2; i++) tryAdd(i + 2 + i * BOARD_WIDTH)
+  } else if (kind === 3) {
+    const ox = rand() > 0.5 ? 0 : BOARD_WIDTH - 4
+    const oy = rand() > 0.5 ? 0 : BOARD_HEIGHT - 4
     for (let y = 0; y < 4; y++) {
       for (let x = 0; x < 4; x++) {
-        if ((x + y) % 2 === 0) tryAdd(ox + x + (oy + y) * 8)
+        if ((x + y) % 2 === 0) tryAdd(ox + x + (oy + y) * BOARD_WIDTH)
       }
+    }
+  } else if (kind === 4) {
+    for (let x = 2; x < BOARD_WIDTH - 2; x++) {
+      for (let y = 2; y < BOARD_HEIGHT - 2; y++) tryAdd(x + y * BOARD_WIDTH)
+    }
+  } else if (kind === 5) {
+    for (let y = 0; y < BOARD_HEIGHT; y++) {
+      tryAdd(y % 2 === 0 ? 2 + y * BOARD_WIDTH : BOARD_WIDTH - 4 + y * BOARD_WIDTH)
+    }
+  } else if (kind === 6) {
+    const mid = Math.floor(BOARD_HEIGHT / 2)
+    for (let x = 0; x < BOARD_WIDTH; x++) tryAdd(x + (mid - 1) * BOARD_WIDTH)
+    for (let x = 0; x < BOARD_WIDTH; x++) tryAdd(x + mid * BOARD_WIDTH)
+  } else if (kind === 7) {
+    for (let i = 0; i < BOARD_WIDTH; i++) tryAdd(BOARD_WIDTH - 1 - i + i * BOARD_WIDTH)
+    for (let x = 2; x < BOARD_WIDTH - 2; x++) tryAdd(x + (BOARD_HEIGHT - 1) * BOARD_WIDTH)
+  } else if (kind === 8) {
+    for (let y = 1; y < BOARD_HEIGHT - 1; y++) {
+      for (let x = 1; x < BOARD_WIDTH - 1; x++) {
+        if (x === 1 || x === BOARD_WIDTH - 2 || y === 1 || y === BOARD_HEIGHT - 2) {
+          tryAdd(x + y * BOARD_WIDTH)
+        }
+      }
+    }
+  } else {
+    for (let i = 0; i < BOARD_SIZE; i++) {
+      if (i % 3 === 0) tryAdd(i)
     }
   }
   for (const i of wanted) avoid.add(i)
@@ -275,41 +307,60 @@ export function generateCampaign(): CampaignNode {
               32 - sector.id * 4 - systemIndex * 2 - nebulaIndex - Math.floor(id / 55) + Math.floor(rand() * 3),
             )
             const avoid = new Set<number>()
-            const pattern = (nebulaIndex + systemIndex + stageIndex) % 5
+            const pattern = (id + nebulaIndex * 3 + systemIndex + stageIndex) % 10
             const frostingCount =
-              sector.id === 1
-                ? id > 6
-                  ? 2 + Math.floor(rand() * 3) + nebulaIndex
-                  : Math.floor(rand() * 2)
-                : 5 + sector.id * 3 + systemIndex + nebulaIndex + Math.floor(rand() * (sector.id + 2))
+              id <= 10
+                ? 0
+                : sector.id === 1
+                  ? 3 + Math.floor((id - 11) / 2) + nebulaIndex + (n % 3)
+                  : 6 + sector.id * 3 + systemIndex + nebulaIndex + Math.floor(rand() * (sector.id + 3)) + (n % 4)
             const frosting = patternFrosting(rand, frostingCount, pattern, avoid)
             const chocCount =
-              sector.id >= 3
-                ? 1 + sector.id - 3 + systemIndex + Math.floor(rand() * sector.id)
-                : sector.id === 2 && nebulaIndex > 0
-                  ? 1 + Math.floor(rand() * 2)
-                  : 0
+              id <= 10
+                ? 0
+                : sector.id >= 3
+                  ? 2 + sector.id - 3 + systemIndex + Math.floor(rand() * sector.id) + (n % 2)
+                  : sector.id === 2
+                    ? 1 + nebulaIndex + (n % 2)
+                    : id > 14
+                      ? 1
+                      : 0
             const chocolate = chocCount > 0 ? pickIndices(rand, chocCount, avoid) : []
-            const swirlCount = sector.id >= 2 ? 1 + nebulaIndex + Math.floor(rand() * sector.id) : 0
+            const swirlCount =
+              id <= 10 ? 0 : sector.id >= 2 ? 1 + nebulaIndex + Math.floor(rand() * sector.id) + (n % 2) : id > 16 ? 1 : 0
             const swirls = pickIndices(rand, swirlCount, avoid)
-            const lockCount = sector.id >= 2 ? 1 + Math.floor(sector.id / 2) + (n % 2) : 0
+            const lockCount =
+              id <= 10 ? 0 : sector.id >= 2 ? 2 + Math.floor(sector.id / 2) + (n % 3) : id > 12 ? 1 + (n % 2) : 0
             const locks = pickIndices(rand, lockCount, avoid)
             const marmCount =
-              sector.id >= 3 ? 2 + Math.floor(rand() * 3) + nebulaIndex : id > 4 ? Math.floor(rand() * 2) : 0
+              id <= 10
+                ? 0
+                : sector.id >= 3
+                  ? 3 + Math.floor(rand() * 3) + nebulaIndex + (n % 2)
+                  : id > 12
+                    ? 1 + (n % 2)
+                    : 0
             const marmalade = pickIndices(rand, marmCount, avoid)
-            const bombCount = sector.id >= 4 ? 1 + Math.floor(rand() * (sector.id - 3)) + (nebulaIndex > 0 ? 1 : 0) : 0
+            const bombCount =
+              id <= 10
+                ? 0
+                : sector.id >= 4
+                  ? 1 + Math.floor(rand() * (sector.id - 2)) + nebulaIndex
+                  : sector.id === 3 && n % 2 === 1
+                    ? 1
+                    : 0
             const bombs = pickIndices(rand, bombCount, avoid).map((index) => ({
               index,
               turns: Math.max(5, 12 - sector.id - systemIndex),
             }))
             const objective = makeObjective(rand, sector.id, id)
-            const jelly = Array.from({ length: 64 }, () => 0)
+            const jelly = Array.from({ length: BOARD_SIZE }, () => 0)
             if (objective.type === 'jelly') {
               const maxLayer = sector.id >= 4 ? 2 : 1
               let placed = 0
               let g = 0
               while (placed < objective.remaining && g++ < 400) {
-                const i = Math.floor(rand() * 64)
+                const i = Math.floor(rand() * BOARD_SIZE)
                 if (jelly[i]! < maxLayer) {
                   jelly[i]! += 1
                   placed += 1

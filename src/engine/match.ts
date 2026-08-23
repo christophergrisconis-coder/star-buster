@@ -76,21 +76,61 @@ function collectRuns(cells: Cell[], width = BOARD_WIDTH, height = BOARD_HEIGHT):
   return runs
 }
 
+export type MatchOrigin = number | readonly number[]
+
+function originSet(origin?: MatchOrigin): Set<number> | undefined {
+  if (origin === undefined) return undefined
+  return new Set(typeof origin === 'number' ? [origin] : origin)
+}
+
+function collectSquares(
+  cells: Cell[],
+  width: number,
+  height: number,
+  origins?: Set<number>,
+): Run[] {
+  const runs: Run[] = []
+  for (let y = 0; y < height - 1; y++) {
+    for (let x = 0; x < width - 1; x++) {
+      const idxs = [x + y * width, x + 1 + y * width, x + (y + 1) * width, x + 1 + (y + 1) * width]
+      const matchable = idxs
+        .map((i) => ({ i, cell: cells[i]! }))
+        .filter(({ cell }) => isMatchable(cell) && cell.color)
+      const byColor = new Map<StarColor, number[]>()
+      for (const { i, cell } of matchable) {
+        const color = cell.color!
+        const list = byColor.get(color) ?? []
+        list.push(i)
+        byColor.set(color, list)
+      }
+      for (const [color, indices] of byColor) {
+        // A full 2×2 always bursts. An L of three only counts on the swipe that made it —
+        // otherwise gravity keeps completing new corners and one play never settles.
+        if (indices.length >= 4) runs.push({ indices, color, axis: 'h' })
+        else if (indices.length >= 3 && origins && indices.some((i) => origins.has(i))) {
+          runs.push({ indices, color, axis: 'h' })
+        }
+      }
+    }
+  }
+  return runs
+}
+
 function classify(
   indices: number[],
   color: StarColor,
   hMax: number,
   vMax: number,
-  preferredOrigin?: number,
+  preferredOrigin?: MatchOrigin,
 ): MatchGroup {
   let kind: MatchGroup['kind'] = 'none'
-  if (hMax >= 4 || vMax >= 4 || (hMax >= 3 && vMax >= 3)) kind = 'wrapped'
+  if (hMax >= 4 || vMax >= 4 || (hMax >= 3 && vMax >= 3) || indices.length >= 4) kind = 'wrapped'
   else kind = 'none'
 
-  const origin =
-    preferredOrigin !== undefined && indices.includes(preferredOrigin)
-      ? preferredOrigin
-      : indices[Math.floor(indices.length / 2)]!
+  const origins = originSet(preferredOrigin)
+  const origin = origins
+    ? (indices.find((i) => origins.has(i)) ?? indices[Math.floor(indices.length / 2)]!)
+    : indices[Math.floor(indices.length / 2)]!
 
   return { indices, color, kind, origin }
 }
@@ -99,9 +139,10 @@ export function findMatches(
   cells: Cell[],
   width = BOARD_WIDTH,
   height = BOARD_HEIGHT,
-  preferredOrigin?: number,
+  preferredOrigin?: MatchOrigin,
 ): MatchGroup[] {
-  const runs = collectRuns(cells, width, height)
+  const origins = originSet(preferredOrigin)
+  const runs = [...collectRuns(cells, width, height), ...collectSquares(cells, width, height, origins)]
   if (runs.length === 0) return []
 
   const groups: MatchGroup[] = []
@@ -160,6 +201,27 @@ export function findMatches(
   return groups
 }
 
-export function hasAnyMatch(cells: Cell[]): boolean {
-  return findMatches(cells).length > 0
+export function hasAnyMatch(cells: Cell[], width = BOARD_WIDTH, height = BOARD_HEIGHT): boolean {
+  return findMatches(cells, width, height).length > 0
+}
+
+export function hasLegalSwap(cells: Cell[], width = BOARD_WIDTH, height = BOARD_HEIGHT): boolean {
+  const swap = (a: number, b: number) => {
+    const next = cells.slice()
+    const tmp = next[a]!
+    next[a] = next[b]!
+    next[b] = tmp
+    return next
+  }
+  for (let i = 0; i < cells.length; i++) {
+    if (!isMatchable(cells[i]!)) continue
+    const x = i % width
+    const y = Math.floor(i / width)
+    const neighbors = [x + 1 < width ? i + 1 : -1, y + 1 < height ? i + width : -1]
+    for (const j of neighbors) {
+      if (j < 0 || !isMatchable(cells[j]!)) continue
+      if (findMatches(swap(i, j), width, height, [i, j]).length > 0) return true
+    }
+  }
+  return false
 }

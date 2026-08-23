@@ -151,8 +151,11 @@ export function challengesForLevel(level: LevelConfig): Challenge[] {
   const rotation: ChallengeId[] = ['comet-tail', 'nova-combo', 'time-bank', 'no-spread', 'no-hints']
   const primary = rotation[level.id % rotation.length]!
   const picked = new Set<ChallengeId>([primary])
-  if (sector >= 3) {
+  if (level.id > 10) {
     picked.add(rotation[(level.id + 2) % rotation.length]!)
+  }
+  if (sector >= 3) {
+    picked.add(rotation[(level.id + 3) % rotation.length]!)
   }
   if (primary === 'no-spread' && level.chocolate.length === 0) {
     picked.delete('no-spread')
@@ -270,7 +273,7 @@ function unusedIndices(level: LevelConfig, count: number): number[] {
     ...level.ingredients,
   ])
   const out: number[] = []
-  for (let i = 0; i < 64 && out.length < count; i++) {
+  for (let i = 0; i < level.jelly.length && out.length < count; i++) {
     if (!used.has(i)) {
       used.add(i)
       out.push(i)

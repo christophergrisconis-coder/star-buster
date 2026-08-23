@@ -77,16 +77,35 @@ export function objectiveComplete(objective: Objective): boolean {
 }
 
 export function describeObjective(objective: Objective): string {
-  if (objective.type === 'jelly') return `Clear ${objective.remaining} nebula jelly`
+  if (objective.type === 'jelly') {
+    return objective.remaining <= 0
+      ? 'All blue glows cleared'
+      : `Clear ${objective.remaining} blue glow${objective.remaining === 1 ? '' : 's'}`
+  }
   if (objective.type === 'ingredient') {
-    return `Deliver ${objective.remaining} meteor shard${objective.remaining === 1 ? '' : 's'}`
+    return objective.remaining <= 0
+      ? 'All shards delivered'
+      : `Slide ${objective.remaining} meteor shard${objective.remaining === 1 ? '' : 's'} to the bottom`
   }
   return objective.orders
     .map((o) => {
-      if (o.special) return `${o.count}× ${labelSpecial(o.special)}`
-      return `${o.count}× ${labelColor(o.color!)} stars`
+      if (o.special) return `Make ${o.count} sun${o.count === 1 ? '' : 's'} (match 4 of one color)`
+      return `Pop ${o.count} ${labelColor(o.color!)} stars`
     })
     .join(' · ')
+}
+
+export function howToClear(objective: Objective): string {
+  if (objective.type === 'jelly') {
+    return 'Win by bursting stars on the bright cyan wells. Score does not finish the stage.'
+  }
+  if (objective.type === 'ingredient') {
+    return 'Win by sliding the meteor shards (▼) down to the bottom row. Regular matches only help if they drop a shard.'
+  }
+  if (objective.orders.some((o) => o.special)) {
+    return 'Win by matching 4+ of one color to spawn a sun. Challenges are optional.'
+  }
+  return 'Win by popping the listed star colors. Challenges are optional shop bonuses.'
 }
 
 function labelSpecial(_s: SpecialKind): string {

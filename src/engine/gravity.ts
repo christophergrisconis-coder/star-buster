@@ -1,7 +1,7 @@
 import { cloneCell, isHole, occupies, type Cell, type GravityMove } from './types'
 
 function barrier(cell: Cell): boolean {
-  return cell.frosting > 0 || cell.chocolate || (cell.lock && occupies(cell))
+  return cell.frosting > 0 || cell.chocolate
 }
 
 export function applyGravity(
@@ -61,7 +61,7 @@ export function gravityLeavesNoUnsupportedFloat(
     let holeBelow = false
     for (let y = height - 1; y >= 0; y--) {
       const cell = cells[x + y * width]!
-      if (cell.frosting > 0 || cell.chocolate || cell.lock) {
+      if (cell.frosting > 0 || cell.chocolate) {
         holeBelow = false
         continue
       }

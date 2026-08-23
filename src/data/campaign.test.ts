@@ -40,9 +40,31 @@ describe('campaign', () => {
     expect(avg(1, (l) => l.colorCount)).toBeLessThanOrEqual(avg(5, (l) => l.colorCount))
   })
 
+  it('teaches the first ten orbits as jelly clears', () => {
+    const early = CAMPAIGN_LEVELS.filter((l) => l.id <= 10)
+    expect(early.every((l) => l.objective.type === 'jelly')).toBe(true)
+    expect(CAMPAIGN_LEVELS[0]!.objective).toEqual({ type: 'jelly', remaining: 8 })
+    expect(CAMPAIGN_LEVELS[0]!.frosting).toEqual([])
+    expect(CAMPAIGN_LEVELS[0]!.moves).toBeGreaterThanOrEqual(30)
+  })
+
   it('changes layouts across nebulas instead of only IDs', () => {
     const a = CAMPAIGN_LEVELS.find((l) => l.sectorId === 3)!
     const b = CAMPAIGN_LEVELS.find((l) => l.sectorId === 3 && l.nebulaId !== a.nebulaId)!
     expect(a.frosting.join()).not.toBe(b.frosting.join())
+  })
+
+  it('gives every nebula multiple orbits and hardens after the novice ten', () => {
+    expect(CAMPAIGN.nebulas.every((n) => n.stageIds.length > 0)).toBe(true)
+    expect(CAMPAIGN.nebulas.every((n) => {
+      const ids = CAMPAIGN.levels.filter((l) => l.nebulaId === n.id)
+      return ids.length >= 3
+    })).toBe(true)
+    const novice = CAMPAIGN_LEVELS.filter((l) => l.id <= 10)
+    const later = CAMPAIGN_LEVELS.filter((l) => l.id > 10 && l.sectorId === 1)
+    const pressure = (l: (typeof CAMPAIGN_LEVELS)[number]) =>
+      l.frosting.length + l.locks.length + l.chocolate.length + l.marmalade.length
+    const avg = (ls: typeof CAMPAIGN_LEVELS) => ls.reduce((n, l) => n + pressure(l), 0) / ls.length
+    expect(avg(later)).toBeGreaterThan(avg(novice))
   })
 })

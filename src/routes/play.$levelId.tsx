@@ -11,8 +11,8 @@ import {
 } from '~/data/challenges'
 import { cometTailDurationMs } from '~/data/difficulty'
 import { getLevel } from '~/data/levels'
-import { LEVEL_BY_ID } from '~/data/campaign'
-import { createGame, reduce } from '~/engine'
+import { CAMPAIGN, LEVEL_BY_ID } from '~/data/campaign'
+import { createGame, howToClear, reduce } from '~/engine'
 import { isSwappable, type GameState } from '~/engine/types'
 import { ChallengeToast } from '~/fx/comboBanners'
 import { useHintCoach } from '~/hint/useHint'
@@ -22,6 +22,7 @@ import { BoosterTray, readKitCounts, type ArmedBooster, type InstantBooster } fr
 import type { ActivePickup } from '~/ui/KitPickup'
 import { BoardSkeleton } from '~/ui/skeletons'
 import { AuthPanel } from '~/ui/AuthPanel'
+import { NextOrbit } from '~/ui/NextOrbit'
 import { TutorialCoach } from '~/ui/TutorialCoach'
 import { synth } from '~/audio/synth'
 import { isLevelPlayable } from '~/lib/lock'
@@ -40,7 +41,7 @@ import {
 } from '~/lib/progress'
 import { kitItemIds, kitLabelForItem, slotById } from '~/data/kit'
 import { applyTutorialBoard, LESSONS, TUTORIAL_LEVEL, TUTORIAL_SUN } from '~/data/tutorial'
-import { markTutorialComplete } from '~/lib/tutorial'
+import { hasCompletedTutorial, markTutorialComplete } from '~/lib/tutorial'
 
 export const Route = createFileRoute('/play/$levelId')({
   validateSearch: (raw: Record<string, unknown>) => ({
@@ -49,6 +50,9 @@ export const Route = createFileRoute('/play/$levelId')({
   beforeLoad: ({ params }) => {
     if (typeof window === 'undefined') return
     if (params.levelId === 'tutorial') return
+    if (!hasCompletedTutorial() && params.levelId === '1') {
+      throw redirect({ to: '/play/$levelId', params: { levelId: 'tutorial' }, search: { challenge: undefined } })
+    }
     const id = Number(params.levelId)
     if (!isLevelPlayable(id, getProgress())) {
       throw redirect({ to: getProgress().guest ? '/auth' : '/' })
@@ -116,8 +120,11 @@ function PlayPage() {
   const [kitCounts, setKitCounts] = useState(readKitCounts)
   const [pickup, setPickup] = useState<ActivePickup | null>(null)
   const [kitNote, setKitNote] = useState<string | null>(null)
+  const [orbitJump, setOrbitJump] = useState(false)
   const nebulaBoostUsed = useRef(false)
   const awardedRef = useRef(false)
+  const jumpedRef = useRef(false)
+  const winClipSeen = useRef(false)
   const tailPause = useRef(0)
   const tailDeadline = useRef<number | null>(null)
   const skin = typeof window === 'undefined' ? 'nova-gold' : getInventory().skin
@@ -140,7 +147,10 @@ function PlayPage() {
     tailPause.current = 0
     setBooster(null)
     setPickup(null)
+    setOrbitJump(false)
     nebulaBoostUsed.current = false
+    jumpedRef.current = false
+    winClipSeen.current = false
     setState(isLesson ? applyTutorialBoard(next) : next)
     if (isLesson) {
       setLessonIndex(0)
@@ -157,6 +167,52 @@ function PlayPage() {
     void navigate({ to: '/play/$levelId', params: { levelId: '1' }, search: { challenge: undefined } })
   }
 
+  const jumpNextOrbit = () => {
+    if (jumpedRef.current) return
+    jumpedRef.current = true
+    if (isLesson) {
+      markTutorialComplete()
+      void navigate({ to: '/play/$levelId', params: { levelId: '1' }, search: { challenge: undefined } })
+      return
+    }
+    if (id >= 250) {
+      void navigate({ to: '/' })
+      return
+    }
+    const dest = Math.min(250, id + 1)
+    const here = LEVEL_BY_ID[id]
+    const next = LEVEL_BY_ID[dest]
+    if (here && next && next.nebulaId !== here.nebulaId) {
+      void navigate({ to: '/' })
+      return
+    }
+    if (canPlay(dest)) {
+      void navigate({ to: '/play/$levelId', params: { levelId: String(dest) }, search: { challenge: undefined } })
+      return
+    }
+    void navigate({ to: '/auth' })
+  }
+  const jumpNextOrbitRef = useRef(jumpNextOrbit)
+  jumpNextOrbitRef.current = jumpNextOrbit
+
+  useEffect(() => {
+    if (state?.status !== 'won' && state?.status !== 'finale') {
+      winClipSeen.current = false
+      return
+    }
+    if (boardBusy) winClipSeen.current = true
+  }, [state?.status, boardBusy])
+
+  useEffect(() => {
+    if (!state || state.status !== 'won' || boardBusy) return
+    const pendingClip = state.events.some((e) => e.type === 'wave' || e.type === 'swap')
+    if (pendingClip && !winClipSeen.current) return
+    setOrbitJump(true)
+    if (!isLesson && id >= 250) return
+    const t = window.setTimeout(() => jumpNextOrbitRef.current(), 2800)
+    return () => window.clearTimeout(t)
+  }, [state?.status, state?.levelId, state?.events, boardBusy, isLesson, id])
+
   useEffect(() => {
     if (!level) {
       setState(null)
@@ -168,12 +224,12 @@ function PlayPage() {
   }, [levelId, level, nebulaChallenge?.id])
 
   useEffect(() => {
-    if (!state || state.status !== 'finale') return
-    const t = window.setInterval(() => {
-      setState((s) => (s ? reduce(s, { type: 'tick-finale' }) : s))
-    }, 420)
-    return () => window.clearInterval(t)
-  }, [state?.status])
+    if (!state || state.status !== 'finale' || boardBusy) return
+    const t = window.setTimeout(() => {
+      setState((s) => (s && s.status === 'finale' ? reduce(s, { type: 'tick-finale' }) : s))
+    }, 380)
+    return () => window.clearTimeout(t)
+  }, [state?.status, state?.events, boardBusy])
 
   useEffect(() => {
     if (!state || state.status !== 'playing' || clockPaused || boardBusy) return
@@ -199,8 +255,25 @@ function PlayPage() {
   }, [state?.levelId, isLesson, noBoosters])
 
   useEffect(() => {
+    if (isLesson || !state || state.status !== 'playing') return
+    if (level.sectorId > 2) return
+    const t = window.setTimeout(() => {
+      setPickup((cur) => cur ?? { key: Date.now(), item: 'solar-flare', index: 27 })
+    }, 800)
+    return () => window.clearTimeout(t)
+  }, [state?.levelId, isLesson, level.sectorId])
+
+  const stowPickup = (item: string) => {
+    grantItem(item, 1)
+    setKitTick((n) => n + 1)
+    setKitNote(`${kitLabelForItem(item)} loaded into your kit`)
+    setPickup(null)
+    window.setTimeout(() => setKitNote(null), 1800)
+  }
+
+  useEffect(() => {
     if (!pickup) return
-    const t = window.setTimeout(() => setPickup(null), 5500)
+    const t = window.setTimeout(() => stowPickup(pickup.item), 2400)
     return () => window.clearTimeout(t)
   }, [pickup?.key])
 
@@ -397,6 +470,13 @@ function PlayPage() {
 
   const nextId = Math.min(250, id + 1)
   const nextOpen = canPlay(nextId)
+  const nextLevel = LEVEL_BY_ID[nextId]
+  const nebulaAdvance = Boolean(level && nextLevel && nextLevel.nebulaId !== level.nebulaId)
+  const nextLabel = isLesson
+    ? (LEVEL_BY_ID[1]?.name ?? 'Amber Veil 1-1')
+    : nebulaAdvance
+      ? (CAMPAIGN.nebulas.find((n) => n.id === nextLevel?.nebulaId)?.name ?? 'Next world')
+      : (nextLevel?.name ?? `Orbit ${nextId}`)
   const lostEvent = state.events.find((e) => e.type === 'status' && e.status === 'lost')
   const loseReason =
     lostEvent && lostEvent.type === 'status' && lostEvent.reason ? lostEvent.reason : 'Orbit goal not cleared'
@@ -408,7 +488,13 @@ function PlayPage() {
           ← Map
         </button>
         <h1 className="display text-[22px] text-gold">{level.name}</h1>
-        <span className="text-[11px] text-white/50">#{level.id}</span>
+        {isLesson ? (
+          <button type="button" className="tutorial-skip-tab tutorial-skip-tab--inline" onClick={skipSchool}>
+            Skip tutorial
+          </button>
+        ) : (
+          <span className="text-[11px] text-white/50">#{level.id}</span>
+        )}
       </div>
       {nebulaChallenge ? (
         <p className="rounded-full border border-magenta/40 bg-magenta/10 px-3 py-1 text-center text-[11px] text-magenta">
@@ -482,11 +568,7 @@ function PlayPage() {
           pickup={pickup}
           onCollectPickup={() => {
             if (!pickup) return
-            grantItem(pickup.item, 1)
-            bumpKit()
-            setKitNote(`${kitLabelForItem(pickup.item)} stowed in your kit`)
-            setPickup(null)
-            window.setTimeout(() => setKitNote(null), 1800)
+            stowPickup(pickup.item)
           }}
         />
         <ChallengeToast text={toast} />
@@ -537,7 +619,7 @@ function PlayPage() {
       {badge ? (
         <p className="text-center text-[12px] text-gold">{badge}</p>
       ) : null}
-      {state.status === 'won' ? (
+      {state.status === 'won' && !orbitJump ? (
         <div className="rounded-2xl border border-gold/40 bg-black/40 p-3 text-center">
           <p className="display text-[28px] text-gold">{isLesson ? 'Flight School clear' : 'Stage clear'}</p>
           {isLesson ? (
@@ -549,15 +631,12 @@ function PlayPage() {
             >
               Enter Amber Veil 1-1 →
             </Link>
-          ) : nextOpen ? (
-            <Link
-              to="/play/$levelId"
-              params={{ levelId: String(nextId) }}
-              search={{ challenge: undefined }}
-              className="mt-2 inline-block text-magenta"
-            >
+          ) : nextOpen && id < 250 ? (
+            <button type="button" className="mt-2 text-magenta" onClick={jumpNextOrbit}>
               Next orbit →
-            </Link>
+            </button>
+          ) : id >= 250 ? (
+            <p className="mt-2 text-[13px] text-gold">Voyage complete.</p>
           ) : (
             <Link to="/auth" className="mt-2 inline-block text-magenta">
               Sign in to continue →
@@ -565,12 +644,29 @@ function PlayPage() {
           )}
         </div>
       ) : null}
+      {orbitJump ? (
+        <NextOrbit
+          title={isLesson ? 'Flight School clear' : 'Orbit clear'}
+          score={state.score}
+          nextName={
+            id >= 250 && !isLesson
+              ? 'Voyage complete'
+              : nebulaAdvance
+                ? `Next world · ${nextLabel}`
+                : nextOpen || isLesson
+                  ? nextLabel
+                  : 'Sign in to continue'
+          }
+          onJump={jumpNextOrbit}
+        />
+      ) : null}
       {state.status === 'lost' ? (
         <div className="rounded-2xl border border-red-400/40 bg-black/40 p-3 text-center">
           <p className="display text-[24px]">Drift failed</p>
           <p className="mt-1 text-[13px] text-white/70">{loseReason}</p>
-          <p className="mt-2 text-[12px] text-white/55">
-            Score and special challenges do not decide the stage. Challenges are optional shop bonuses.
+          <p className="mt-2 text-[13px] text-gold">{howToClear(state.objective)}</p>
+          <p className="mt-1 text-[12px] text-white/55">
+            Score and challenges do not finish the stage. Retry and work the orbit goal above.
           </p>
           <button type="button" className="mt-2 text-gold" onClick={() => resetRun(createGame(level))}>
             Retry

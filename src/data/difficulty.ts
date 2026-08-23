@@ -1,3 +1,5 @@
+import { BOARD_WIDTH } from '~/engine/types'
+
 /** Sector pressure used by the campaign, play HUD, and engine timers. */
 
 export const SECTOR_DIFFICULTY = {
@@ -5,7 +7,7 @@ export const SECTOR_DIFFICULTY = {
     timeLimit: 180,
     cometTailMs: 4800,
     colorCount: 5,
-    minMoves: 22,
+    minMoves: 30,
     frostingHp: 1,
   },
   2: {
@@ -70,11 +72,13 @@ export function frostingHpFor(sectorId: number, index: number): number {
 }
 
 export function ingredientExits(sectorId: number): number[] {
-  if (sectorId <= 1) return [0, 1, 2, 3, 4, 5, 6, 7]
-  if (sectorId === 2) return [1, 2, 3, 4, 5, 6]
-  if (sectorId === 3) return [1, 2, 5, 6]
-  if (sectorId === 4) return [2, 3, 4, 5]
-  return [3, 4]
+  const last = BOARD_WIDTH - 1
+  const mid = Math.floor(BOARD_WIDTH / 2)
+  if (sectorId <= 1) return Array.from({ length: BOARD_WIDTH }, (_, i) => i)
+  if (sectorId === 2) return Array.from({ length: BOARD_WIDTH }, (_, i) => i).filter((i) => i > 0 && i < last)
+  if (sectorId === 3) return [1, 2, last - 2, last - 1]
+  if (sectorId === 4) return [2, 3, last - 3, last - 2]
+  return [mid - 1, mid]
 }
 
 export function cometTailBanner(tail: number): string | null {

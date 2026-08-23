@@ -8,7 +8,7 @@ import {
 import { convertMovesToSpecials, finaleMultiplier } from './finale'
 import { applyGravity } from './gravity'
 import { rngInt } from './prng'
-import { findMatches } from './match'
+import { findMatches, hasAnyMatch, hasLegalSwap, type MatchOrigin } from './match'
 import {
   applyJellyClear,
   applyOrderProgress,
@@ -175,7 +175,7 @@ function blastAndRefill(state: GameState, seeds: Iterable<number>, combo = 1): G
   return resolveCascades(current)
 }
 
-function resolveCascades(state: GameState, preferredOrigin?: number): GameState {
+function resolveCascades(state: GameState, preferredOrigin?: MatchOrigin): GameState {
   let current = { ...state, events: [...state.events] }
   let combo = 0
 
@@ -272,50 +272,6 @@ function resolveCascades(state: GameState, preferredOrigin?: number): GameState 
   }
 
   return current
-}
-
-function detonateAllSpecials(state: GameState): GameState {
-  const specials = state.cells
-    .map((c, i) => (c.special !== 'none' ? i : -1))
-    .filter((i) => i >= 0)
-  if (specials.length === 0) return state
-  const { destroyed } = detonateQueue(state.cells, specials, state.width, state.height)
-  let current = applyDestroy(state, destroyed, new Map())
-  const collected = collectIngredients(current.cells, current.width, current.height, current.exits)
-  current = { ...current, cells: collected.cells }
-  if (collected.collected.length && current.objective.type === 'ingredient') {
-    current = {
-      ...current,
-      objective: {
-        type: 'ingredient',
-        remaining: Math.max(0, current.objective.remaining - collected.collected.length),
-      },
-    }
-  }
-  const grav = applyGravity(current.cells, current.width, current.height)
-  const filled = refillBoard({ ...current, cells: grav.cells })
-  const combo = Math.max(1, current.combo + 1)
-  return {
-    ...current,
-    cells: filled.cells,
-    rngState: filled.rngState,
-    combo,
-    score: current.score + destroyed.size * 50 * combo,
-    events: [
-      ...current.events,
-      {
-        type: 'wave',
-        combo,
-        blast: blastForCombo(combo, 1, destroyed.size),
-        destroyed: [...destroyed],
-        spawnedSpecials: [],
-        gravity: grav.moves,
-        refill: filled.refill,
-        groups: 1,
-        word: comboWord(combo),
-      },
-    ],
-  }
 }
 
 function swapCells(cells: Cell[], a: number, b: number): Cell[] {
@@ -428,22 +384,14 @@ function finishMove(state: GameState, consumedMove: boolean): GameState {
 
   if (objectiveComplete(current.objective)) {
     if (current.movesLeft > 0 && current.status === 'playing') {
-      current = convertMovesToSpecials(current)
-      current = detonateAllSpecials(current)
-      current = resolveCascades(current)
-      current = {
-        ...current,
-        status: 'won',
-        events: [...current.events, { type: 'status', status: 'won' }],
-      }
-    } else {
-      current = {
-        ...current,
-        status: 'won',
-        events: [...current.events, { type: 'status', status: 'won' }],
-      }
+      // Stay in finale so the winning cascade can play, then suns ignite one at a time.
+      return convertMovesToSpecials(current)
     }
-    return current
+    return {
+      ...current,
+      status: 'won',
+      events: [...current.events, { type: 'status', status: 'won' }],
+    }
   }
 
   if (consumedMove && current.movesLeft <= 0) {
@@ -460,14 +408,16 @@ function finishMove(state: GameState, consumedMove: boolean): GameState {
 function maybeDropKit(state: GameState): GameState {
   if (state.status !== 'playing' || state.levelId <= 0) return state
   const wave = [...state.events].reverse().find((e) => e.type === 'wave')
-  if (!wave || wave.type !== 'wave' || wave.destroyed.length < 4) return state
-  const roll = rollKitDrop(state.rngState, state.sectorId, wave.combo, wave.blast, state.kitDrops ?? 0)
+  if (!wave || wave.type !== 'wave' || wave.destroyed.length < 3) return state
+  const already = state.kitDrops ?? 0
+  const forceFirst = already === 0 && state.sectorId <= 2
+  const roll = rollKitDrop(state.rngState, state.sectorId, wave.combo, wave.blast, already, forceFirst)
   if (!roll.item) return { ...state, rngState: roll.rngState }
   const pick = wave.destroyed[Math.min(wave.destroyed.length - 1, Math.floor(roll.indexJitter * wave.destroyed.length))]!
   return {
     ...state,
     rngState: roll.rngState,
-    kitDrops: (state.kitDrops ?? 0) + 1,
+    kitDrops: already + 1,
     events: [...state.events, { type: 'kit-drop', item: roll.item, index: pick }],
   }
 }
@@ -506,6 +456,12 @@ export function createGame(config: LevelConfig): GameState {
   }
   state = syncJellyObjective(state)
   state = resolveCascades(state)
+  if (hasAnyMatch(state.cells, state.width, state.height) || !hasLegalSwap(state.cells, state.width, state.height)) {
+    const retry = generateInitialCells({ ...config, seed: (config.seed + 7919) | 0 })
+    state = { ...state, cells: retry.cells, rngState: retry.rngState }
+    state = syncJellyObjective(state)
+    state = resolveCascades(state)
+  }
   state = { ...state, events: [], combo: 0 }
   return state
 }
@@ -637,8 +593,15 @@ export function reduce(state: GameState, action: EngineAction): GameState {
   }
 
   if (action.type === 'tick-finale') {
-    current = detonateAllSpecials(current)
-    current = resolveCascades(current)
+    const nextSun = current.cells.findIndex((c) => c.special !== 'none')
+    if (nextSun < 0) {
+      return {
+        ...current,
+        status: 'won',
+        events: [...current.events, { type: 'status', status: 'won' }],
+      }
+    }
+    current = blastAndRefill(current, [nextSun], Math.max(1, current.combo + 1))
     if (!current.cells.some((c) => c.special !== 'none')) {
       current = {
         ...current,
@@ -675,7 +638,7 @@ export function reduce(state: GameState, action: EngineAction): GameState {
   }
 
   const swapped = swapCells(current.cells, a, b)
-  const matches = findMatches(swapped, current.width, current.height, b)
+  const matches = findMatches(swapped, current.width, current.height, [a, b])
   const specialSeeds = [a, b].filter((i) => swapped[i]!.special !== 'none')
   if (matches.length === 0 && specialSeeds.length === 0) {
     return { ...current, events: [{ type: 'invalid-swap', a, b }] }
@@ -688,7 +651,7 @@ export function reduce(state: GameState, action: EngineAction): GameState {
     cometTail: current.cometTail + 1,
     events: [{ type: 'swap', a, b }],
   }
-  current = matches.length === 0 ? blastAndRefill(current, specialSeeds, 1) : resolveCascades(current, b)
+  current = matches.length === 0 ? blastAndRefill(current, specialSeeds, 1) : resolveCascades(current, [a, b])
   current = rewardForMove(current)
   return finishMove(current, true)
 }

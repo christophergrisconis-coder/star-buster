@@ -16,7 +16,7 @@ export interface KitSlot {
 }
 
 export const KIT_SLOTS: KitSlot[] = [
-  { id: 'flare', item: 'solar-flare', altItems: ['booster-wrapped', 'booster-striped', 'booster-nova'], label: 'Flare', blurb: 'Plant a sun and ignite a 5×5 burst', minSector: 1, use: 'arm' },
+  { id: 'flare', item: 'solar-flare', altItems: ['booster-wrapped', 'booster-striped', 'booster-nova'], label: 'Flare', blurb: 'Plant a sun and ignite a 3×3 burst', minSector: 1, use: 'arm' },
   { id: 'hammer', item: 'hammer', label: 'Meteor', blurb: 'Shatter one tile', minSector: 1, use: 'arm' },
   { id: 'well', item: 'gravity-well', label: 'Well', blurb: 'Crush a 3×3 pocket', minSector: 2, use: 'arm' },
   { id: 'moves', item: 'moves-5', label: 'Fuel', blurb: '+5 moves', minSector: 1, use: 'instant' },
@@ -26,14 +26,14 @@ export const KIT_SLOTS: KitSlot[] = [
   { id: 'shuffle', item: 'star-shuffle', label: 'Remix', blurb: 'Shuffle the sky', minSector: 4, use: 'instant' },
 ]
 
-const DROP_CHANCE: number[] = [0, 0.18, 0.11, 0.07, 0.045, 0.028]
-const DROP_CAP: number[] = [0, 3, 2, 2, 1, 1]
+const DROP_CHANCE: number[] = [0, 0.4, 0.22, 0.1, 0.055, 0.03]
+const DROP_CAP: number[] = [0, 4, 3, 2, 1, 1]
 
 export function kitDropChance(sectorId: number, combo: number, blast: BlastSize): number {
   const sector = Math.min(5, Math.max(1, sectorId))
-  let chance = DROP_CHANCE[sector] ?? 0.028
-  if (combo < 2 && blast === 'S') chance *= 0.28
-  else if (combo >= 4 || blast === 'L') chance = Math.min(0.26, chance * 1.35)
+  let chance = DROP_CHANCE[sector] ?? 0.03
+  if (combo < 2 && blast === 'S') chance *= 0.55
+  else if (combo >= 4 || blast === 'L') chance = Math.min(0.55, chance * 1.35)
   return chance
 }
 
@@ -52,13 +52,14 @@ export function rollKitDrop(
   combo: number,
   blast: BlastSize,
   already: number,
+  force = false,
 ): { item: string | null; indexJitter: number; rngState: number } {
   if (sectorId <= 0) return { item: null, indexJitter: 0, rngState }
   if (already >= kitDropCap(sectorId)) return { item: null, indexJitter: 0, rngState }
   const pool = droppableSlots(sectorId)
   if (pool.length === 0) return { item: null, indexJitter: 0, rngState }
   const roll = nextRng(rngState)
-  if (roll.value > kitDropChance(sectorId, combo, blast)) {
+  if (!force && roll.value > kitDropChance(sectorId, combo, blast)) {
     return { item: null, indexJitter: 0, rngState: roll.state }
   }
   const pick = rngPick(roll.state, pool)

@@ -86,18 +86,21 @@ function twoFrames() {
   })
 }
 
+const SWAP_MS = 280
+const DROP_MS = 320
+
 function explodeMs(size: BlastSize, reduced: boolean) {
   if (reduced) return 0
-  return size === 'L' ? 520 : size === 'M' ? 430 : 360
+  return size === 'L' ? 480 : size === 'M' ? 400 : 340
 }
 
 function gravityMs(moves: WaveEvent['gravity'], width: number, reduced: boolean) {
   if (reduced) return 0
-  if (moves.length === 0) return 60
+  if (moves.length === 0) return DROP_MS
   const rows = Math.max(
     ...moves.map((m) => Math.abs(Math.floor(m.to / width) - Math.floor(m.from / width))),
   )
-  return Math.min(420, Math.max(180, 72 * rows))
+  return Math.min(520, Math.max(DROP_MS, 100 * rows))
 }
 
 function swapCells(cells: Cell[], a: number, b: number): Cell[] {
@@ -261,6 +264,8 @@ export function Board({
   const busyRef = useRef(false)
   const busyStartedAt = useRef<number | null>(null)
   const capturedRef = useRef<GameState>(state)
+  const clipSigRef = useRef('')
+  const playGen = useRef(0)
   const [clipId, setClipId] = useState(0)
   const [bounce, setBounce] = useState<{ a: number; b: number } | null>(null)
 
@@ -295,6 +300,9 @@ export function Board({
       return () => window.clearTimeout(t)
     }
     if (!hasResolve) return
+    const sig = `${state.levelId}:${state.movesLeft}:${state.score}:${state.status}:${state.events.length}:${state.events.map((e) => e.type).join(',')}`
+    if (sig === clipSigRef.current) return
+    clipSigRef.current = sig
     capturedRef.current = state
     setClipId((n) => n + 1)
   }, [state.events])
@@ -317,13 +325,15 @@ export function Board({
     const snap = capturedRef.current
     const waves = snap.events.filter((e): e is WaveEvent => e.type === 'wave')
     const swapEv = snap.events.find((e) => e.type === 'swap')
+    const gen = ++playGen.current
     let cancelled = false
     let safety = 0
-
     let finished = false
+    const live = () => !cancelled && playGen.current === gen
+
     const finish = () => {
       window.clearTimeout(safety)
-      if (cancelled || finished) return
+      if (!live() || finished) return
       finished = true
       settleBoard(snap.cells)
       setLock(false)
@@ -353,13 +363,15 @@ export function Board({
         setPieces(moving)
         setBoardCells(cells)
         setSparks([swapEv.a, swapEv.b])
-        await wait(140)
+        await twoFrames()
+        if (!live()) return
+        await wait(SWAP_MS)
         setSparks([])
-        if (cancelled) return
+        if (!live()) return
       }
 
       for (const wave of waves) {
-        if (cancelled) return
+        if (!live()) return
         onWaveRef.current?.(wave)
         setWaveCombo(wave.combo)
         setBanner(wave.word ?? (wave.groups >= 2 ? 'NICE' : wave.combo >= 2 ? `COMBO x${wave.combo}` : null))
@@ -383,7 +395,7 @@ export function Board({
         setFlashes(wave.destroyed)
         setSunBursts(goldHits)
         await wait(explodeMs(wave.blast, reduced))
-        if (cancelled) return
+        if (!live()) return
 
         cells = applyDestroyVisual(cells, wave)
         const dests = new Set(wave.gravity.map((m) => m.to))
@@ -407,9 +419,11 @@ export function Board({
             y: Math.floor(m.from / snap.width),
           })),
         )
+        await twoFrames()
+        if (!live()) return
         await wait(gravityMs(wave.gravity, snap.width, reduced))
         setTrails([])
-        if (cancelled) return
+        if (!live()) return
 
         const refillAt = new Set(wave.refill.map((r) => r.index))
         moving = moving.filter((p) => !refillAt.has(p.index))
@@ -430,23 +444,23 @@ export function Board({
         setBoardCells(cells)
         if (!reduced && newcomers.length) {
           await twoFrames()
-          if (cancelled) return
+          if (!live()) return
           const born = new Set(newcomers.map((n) => n.id))
           moving = moving.map((p) => (born.has(p.id) ? { ...p, visualY: undefined, spawning: false } : p))
           setPieces(moving)
-          await wait(280)
+          await wait(DROP_MS)
         }
         setBoardFx('')
-        if (cancelled) return
+        if (!live()) return
       }
 
       const tailWord = cometTailBanner(snap.cometTail)
       if (tailWord) {
         setWaveCombo(0)
         setBanner(tailWord)
-        await wait(reduced ? 0 : 420)
+        await wait(reduced ? 0 : 360)
       }
-      if (cancelled) return
+      if (!live()) return
       finish()
     }
 
@@ -454,6 +468,7 @@ export function Board({
       void run()
     }, 0)
     safety = window.setTimeout(() => {
+      if (!live() || finished) return
       cancelled = true
       settleBoard(snap.cells)
       setLock(false)
@@ -464,8 +479,6 @@ export function Board({
       cancelled = true
       window.clearTimeout(t)
       window.clearTimeout(safety)
-      if (!finished) settleBoard(snap.cells)
-      setLock(false)
     }
   }, [clipId, reduced])
 
@@ -555,7 +568,10 @@ export function Board({
     const dy = clientY - start.y
     if (Math.hypot(dx, dy) < SLIDE_THRESHOLD_PX) return
     const b = pickSwapTarget(start.index, dx, dy, state.width, state.height, state.cells)
-    if (b === null) return
+    if (b === null) {
+      if (!isSwappable(state.cells[start.index]!)) onDenied?.(start.index, 'locked')
+      return
+    }
     if (!emitSwap(start.index, b)) return
     start.swapped = true
   }
@@ -583,12 +599,12 @@ export function Board({
     handleTap(tapped)
   }
 
-  const dropMs = reduced ? 0 : 220
+  const dropMs = reduced ? 0 : DROP_MS
 
   return (
-    <div className="relative mx-auto w-[min(100%,360px)]">
+    <div className="relative mx-auto w-full max-w-[430px]">
       <ComboBanner word={banner} combo={waveCombo} cometTail={state.cometTail} />
-      <div className={`play-board relative aspect-square overflow-hidden rounded-2xl border border-white/10 shadow-[0_0_40px_#ff2bd633] ${boardFx}`} aria-busy={busy}>
+      <div className={`play-board relative aspect-square overflow-visible rounded-2xl border border-white/10 shadow-[0_0_40px_#ff2bd633] ${boardFx}`} aria-busy={busy}>
         <div
           ref={boardRef}
           className="absolute inset-1 z-10 touch-none"
@@ -629,9 +645,7 @@ export function Board({
                 }`}
               >
                 <div className="absolute inset-[18%] rounded-full bg-white/5" />
-                {cell.jelly > 0 ? (
-                  <div className="absolute inset-1 rounded-full bg-[#5ce1ff]/20 ring-1 ring-[#5ce1ff]/40" />
-                ) : null}
+                {cell.jelly > 0 ? <div className="jelly-well" /> : null}
               </div>
             )
           })}
@@ -676,8 +690,8 @@ export function Board({
               style={{
                 left: `${((x + 0.5) / state.width) * 100}%`,
                 top: `${((y + 0.5) / state.height) * 100}%`,
-                width: '38%',
-                height: '38%',
+                width: '22%',
+                height: '22%',
               }}
             />
           )
@@ -697,7 +711,8 @@ export function Board({
           if (!visible) return null
           const x = p.index % state.width
           const y = p.visualY ?? Math.floor(p.index / state.width)
-          const moving = p.visualY !== undefined
+          const falling = p.visualY !== undefined
+          const sliding = (busy || falling) && !p.exploding
           const bouncing = bounce && (bounce.a === p.index || bounce.b === p.index)
           const other = bouncing ? (bounce.a === p.index ? bounce.b : bounce.a) : null
           const ox = other != null ? (other % state.width) - x : 0
@@ -705,7 +720,7 @@ export function Board({
           return (
             <div
               key={p.id}
-              className={`piece-slot${moving && !p.exploding ? ' piece-moving' : ''}${bouncing ? ' swap-bounce' : ''}`}
+              className={`piece-slot${sliding ? ' piece-moving' : ''}${bouncing ? ' swap-bounce' : ''}`}
               style={{
                 width: `${100 / state.width}%`,
                 height: `${100 / state.height}%`,

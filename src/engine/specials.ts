@@ -106,8 +106,8 @@ export function allBoardIndices(width: number, height: number): Set<number> {
   return s
 }
 
-export const SUN_BLAST_RADIUS = 2
-export const TWIN_SUN_BLAST_RADIUS = 3
+export const SUN_BLAST_RADIUS = 1
+export const TWIN_SUN_BLAST_RADIUS = 2
 
 export function isSunSpecial(special: SpecialKind): boolean {
   return special !== 'none'

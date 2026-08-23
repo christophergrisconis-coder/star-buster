@@ -1,5 +1,5 @@
 import type { Challenge } from '~/data/challenges'
-import { describeObjective } from '~/engine/objectives'
+import { describeObjective, howToClear } from '~/engine/objectives'
 import type { GameState, LevelConfig } from '~/engine/types'
 
 function formatClock(seconds: number): string {
@@ -19,8 +19,8 @@ function goalProgress(state: GameState, level: LevelConfig): { left: number; tot
     const total = level.ingredients.length || state.objective.remaining
     return { left: state.objective.remaining, total, label }
   }
-  const total = state.objective.orders.reduce((n, o) => n + o.count, 0)
-  const left = total
+  const total = level.objective.type === 'order' ? level.objective.orders.reduce((n, o) => n + o.count, 0) : 1
+  const left = state.objective.orders.reduce((n, o) => n + o.count, 0)
   return { left, total: Math.max(total, 1), label }
 }
 
@@ -84,17 +84,15 @@ export function HUD({
         </div>
       </div>
 
-      <section className={`goal-card ${lessonFocus === 'goal' ? 'lesson-focus' : ''}`}>
+      <section className={`goal-card goal-card--hero ${lessonFocus === 'goal' ? 'lesson-focus' : ''}`}>
         <div className="flex items-center justify-between gap-2">
-          <p className="text-[10px] uppercase tracking-[0.22em] text-magenta">Orbit goal</p>
-          <span className="text-[11px] text-gold">
+          <p className="goal-kicker">Orbit challenge · required</p>
+          <span className="text-[12px] font-semibold text-gold">
             {goal.left <= 0 ? 'Clear!' : `${goal.left} left`}
           </span>
         </div>
-        <h2 className="display mt-1 text-[18px] leading-tight text-gold">{goal.label}</h2>
-        <p className="mt-1 text-[11px] text-white/55">
-          Clear this goal to win. Score does not decide the stage. Challenges below are optional shop bonuses.
-        </p>
+        <h2 className="display mt-1 text-[22px] leading-tight text-gold">{goal.label}</h2>
+        <p className="mt-1 text-[13px] text-cyan-100/90">{howToClear(state.objective)}</p>
         <div className="voyage-meter-track mt-2" aria-hidden>
           <div className="voyage-meter-fill" style={{ width: `${Math.max(6, goalPct)}%` }} />
         </div>

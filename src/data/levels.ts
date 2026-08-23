@@ -1,5 +1,5 @@
 import type { LevelConfig, Objective, StarColor } from '~/engine/types'
-import { STAR_COLORS as COLORS } from '~/engine/types'
+import { BOARD_HEIGHT, BOARD_SIZE, BOARD_WIDTH, STAR_COLORS as COLORS } from '~/engine/types'
 import { ingredientExits, levelTimeLimit, sectorDifficulty } from './difficulty'
 import { SECTORS, UNIVERSE } from './universe'
 
@@ -21,7 +21,7 @@ function scatter(seed: number, count: number, avoid: Set<number> = new Set()): n
   let guard = 0
   while (out.length < count && guard++ < 400) {
     s = hash(s + out.length * 17)
-    const i = s % 64
+    const i = s % BOARD_SIZE
     if (avoid.has(i)) continue
     avoid.add(i)
     out.push(i)
@@ -32,24 +32,24 @@ function scatter(seed: number, count: number, avoid: Set<number> = new Set()): n
 function patternFrostingLevels(seed: number, count: number, pattern: number, avoid: Set<number>): number[] {
   const wanted: number[] = []
   const tryAdd = (i: number) => {
-    if (i < 0 || i > 63 || avoid.has(i) || wanted.includes(i)) return
+    if (i < 0 || i >= BOARD_SIZE || avoid.has(i) || wanted.includes(i)) return
     wanted.push(i)
   }
   if (pattern === 0) {
     const col = 1 + (seed % 3)
-    for (let y = 1; y < 7; y++) tryAdd(col + y * 8)
-    for (let y = 2; y < 6; y++) tryAdd((col + 3) % 8 + y * 8)
+    for (let y = 1; y < BOARD_HEIGHT - 1; y++) tryAdd(col + y * BOARD_WIDTH)
+    for (let y = 2; y < BOARD_HEIGHT - 2; y++) tryAdd((col + 3) % BOARD_WIDTH + y * BOARD_WIDTH)
   } else if (pattern === 1) {
-    for (let x = 1; x < 7; x++) {
-      tryAdd(x + 8)
-      tryAdd(x + 48)
+    for (let x = 1; x < BOARD_WIDTH - 1; x++) {
+      tryAdd(x + BOARD_WIDTH)
+      tryAdd(x + (BOARD_HEIGHT - 2) * BOARD_WIDTH)
     }
   } else if (pattern === 2) {
-    for (let i = 0; i < 8; i++) tryAdd(i + i * 8)
+    for (let i = 0; i < BOARD_WIDTH; i++) tryAdd(i + i * BOARD_WIDTH)
   } else if (pattern === 3) {
-    const ox = seed % 2 === 0 ? 0 : 4
-    for (let y = 1; y < 7; y++) {
-      for (let x = 0; x < 4; x++) if ((x + y) % 2 === 0) tryAdd(ox + x + y * 8)
+    const ox = seed % 2 === 0 ? 0 : BOARD_WIDTH - 4
+    for (let y = 1; y < BOARD_HEIGHT - 1; y++) {
+      for (let x = 0; x < 4; x++) if ((x + y) % 2 === 0) tryAdd(ox + x + y * BOARD_WIDTH)
     }
   }
   for (const i of wanted) avoid.add(i)
@@ -63,11 +63,11 @@ function objectiveFor(id: number, sectorId: number, seed: number): {
   ingredients: number[]
 } {
   const roll = id % 10
-  const jelly = Array.from({ length: 64 }, () => 0)
+  const jelly = Array.from({ length: BOARD_SIZE }, () => 0)
   if (roll < 4) {
     const layers = sectorId >= 3 ? 2 : 1
     const step = sectorId >= 4 ? 3 : 4
-    for (let i = 0; i < 64; i++) {
+    for (let i = 0; i < BOARD_SIZE; i++) {
       if (i % step !== 0) jelly[i] = i % 9 === 4 ? layers : Math.min(layers, 1)
     }
     const remaining = jelly.reduce((n, v) => n + v, 0)

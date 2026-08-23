@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { refillBoard } from '../board'
 import { applyGravity, gravityLeavesNoUnsupportedFloat } from '../gravity'
-import { findMatches } from '../match'
+import { findMatches, hasAnyMatch, hasLegalSwap } from '../match'
+import { FINALE_SUN_CAP, convertMovesToSpecials } from '../finale'
 import { assertNoHoles, createGame, reduce } from '../reducer'
 import {
+  BOARD_HEIGHT,
   BOARD_SIZE,
   BOARD_WIDTH,
   emptyCell,
@@ -11,9 +13,12 @@ import {
   isHole,
   isSwappable,
   occupies,
+  STAR_COLORS,
   starCell,
   type LevelConfig,
 } from '../types'
+
+const BOTTOM = BOARD_HEIGHT - 1
 
 function level(over: Partial<LevelConfig> = {}): LevelConfig {
   return {
@@ -34,9 +39,9 @@ function level(over: Partial<LevelConfig> = {}): LevelConfig {
     swirls: [],
     chocolate: [],
     bombs: [],
-    jelly: Array.from({ length: 64 }, () => 0),
+    jelly: Array.from({ length: BOARD_SIZE }, () => 0),
     ingredients: [],
-    exits: [0, 1, 2, 3, 4, 5, 6, 7],
+    exits: Array.from({ length: BOARD_WIDTH }, (_, i) => i),
     timeLimit: 180,
     ...over,
   }
@@ -53,10 +58,10 @@ describe('gravity and refill', () => {
   it('fills a punched column', () => {
     const state = createGame(level({ seed: 7 }))
     const cells = state.cells.map((c) => ({ ...c }))
-    cells[idx(0, 7)] = { ...cells[idx(0, 7)]!, color: null, special: 'none', ingredient: false }
-    cells[idx(0, 6)] = { ...cells[idx(0, 6)]!, color: null, special: 'none', ingredient: false }
-    const grav = applyGravity(cells, 8, 8)
-    expect(grav.cells[idx(0, 7)]!.color || grav.cells[idx(0, 7)]!.ingredient).toBeTruthy()
+    cells[idx(0, BOTTOM)] = { ...cells[idx(0, BOTTOM)]!, color: null, special: 'none', ingredient: false }
+    cells[idx(0, BOTTOM - 1)] = { ...cells[idx(0, BOTTOM - 1)]!, color: null, special: 'none', ingredient: false }
+    const grav = applyGravity(cells, BOARD_WIDTH, BOARD_HEIGHT)
+    expect(grav.cells[idx(0, BOTTOM)]!.color || grav.cells[idx(0, BOTTOM)]!.ingredient).toBeTruthy()
   })
 
   it('does not drop stars through frosting', () => {
@@ -65,7 +70,7 @@ describe('gravity and refill', () => {
     expect(state.cells[idx(3, 3)]!.frosting).toBeGreaterThan(0)
     const punched = state.cells.map((c) => ({ ...c }))
     punched[idx(3, 2)] = starCell('gold')
-    const grav = applyGravity(punched, 8, 8)
+    const grav = applyGravity(punched, BOARD_WIDTH, BOARD_HEIGHT)
     expect(grav.cells[idx(3, 3)]!.frosting).toBeGreaterThan(0)
     expect(grav.moves.some((m) => m.to === idx(3, 3))).toBe(false)
     assertNoHoles(state)
@@ -83,22 +88,22 @@ describe('gravity and refill', () => {
     cells[idx(2, 0)] = starCell('gold')
     cells[idx(2, 1)] = starCell('red')
     cells[idx(2, 2)] = starCell('blue')
-    const grav = applyGravity(cells, 8, 8)
-    expect(grav.cells[idx(2, 7)]!.color).toBe('blue')
-    expect(grav.cells[idx(2, 6)]!.color).toBe('red')
-    expect(grav.cells[idx(2, 5)]!.color).toBe('gold')
+    const grav = applyGravity(cells, BOARD_WIDTH, BOARD_HEIGHT)
+    expect(grav.cells[idx(2, BOTTOM)]!.color).toBe('blue')
+    expect(grav.cells[idx(2, BOTTOM - 1)]!.color).toBe('red')
+    expect(grav.cells[idx(2, BOTTOM - 2)]!.color).toBe('gold')
     expect(isHole(grav.cells[idx(2, 0)]!)).toBe(true)
     expect(isHole(grav.cells[idx(2, 4)]!)).toBe(true)
-    expect(gravityLeavesNoUnsupportedFloat(grav.cells, 8, 8)).toBe(true)
-    expect(grav.moves.some((m) => m.from === idx(2, 2) && m.to === idx(2, 7))).toBe(true)
+    expect(gravityLeavesNoUnsupportedFloat(grav.cells, BOARD_WIDTH, BOARD_HEIGHT)).toBe(true)
+    expect(grav.moves.some((m) => m.from === idx(2, 2) && m.to === idx(2, BOTTOM))).toBe(true)
   })
 
   it('refill fills remaining holes at the top after gravity', () => {
     const state = createGame(level({ seed: 21 }))
     const punched = state.cells.map((c) => ({ ...c }))
-    punched[idx(1, 7)] = emptyCell()
-    punched[idx(1, 6)] = emptyCell()
-    const grav = applyGravity(punched, 8, 8)
+    punched[idx(1, BOTTOM)] = emptyCell()
+    punched[idx(1, BOTTOM - 1)] = emptyCell()
+    const grav = applyGravity(punched, BOARD_WIDTH, BOARD_HEIGHT)
     expect(isHole(grav.cells[idx(1, 0)]!)).toBe(true)
     expect(isHole(grav.cells[idx(1, 1)]!)).toBe(true)
     const filled = refillBoard({ ...state, cells: grav.cells })
@@ -106,7 +111,21 @@ describe('gravity and refill', () => {
     const refillRows = filled.refill.map((r) => Math.floor(r.index / BOARD_WIDTH)).sort((a, b) => a - b)
     expect(refillRows).toEqual([0, 1])
     expect(occupies(filled.cells[idx(1, 0)]!)).toBe(true)
-    expect(occupies(filled.cells[idx(1, 7)]!)).toBe(true)
+    expect(occupies(filled.cells[idx(1, BOTTOM)]!)).toBe(true)
+  })
+
+  it('refill refuses to drop a fresh 3-in-a-row', () => {
+    const state = createGame(level({ seed: 21, colorCount: 6 }))
+    const cells = Array.from({ length: BOARD_SIZE }, (_, i) => {
+      const x = i % BOARD_WIDTH
+      const y = Math.floor(i / BOARD_WIDTH)
+      return starCell(STAR_COLORS[(x + y * 2) % STAR_COLORS.length]!)
+    })
+    cells[idx(4, 0)] = emptyCell()
+    cells[idx(4, 1)] = emptyCell()
+    const filled = refillBoard({ ...state, cells })
+    expect(filled.cells.some((c) => isHole(c))).toBe(false)
+    expect(hasAnyMatch(filled.cells, BOARD_WIDTH, BOARD_HEIGHT)).toBe(false)
   })
 
   it('a matching swap leaves every playable cell occupied', () => {
@@ -119,7 +138,7 @@ describe('gravity and refill', () => {
     const next = reduce({ ...state, cells }, { type: 'swap', a: idx(2, 7), b: idx(2, 6) })
     expect(next.events.some((e) => e.type === 'wave')).toBe(true)
     assertNoHoles(next)
-    expect(gravityLeavesNoUnsupportedFloat(next.cells, 8, 8)).toBe(true)
+    expect(gravityLeavesNoUnsupportedFloat(next.cells, BOARD_WIDTH, BOARD_HEIGHT)).toBe(true)
     expect(next.cells.every((c) => !isHole(c))).toBe(true)
     const waves = next.events.filter((e) => e.type === 'wave')
     const first = waves[0]
@@ -139,8 +158,66 @@ describe('matches', () => {
     cells[idx(0, 4)] = starCell('gold')
     cells[idx(1, 4)] = starCell('gold')
     cells[idx(2, 4)] = starCell('gold')
-    const groups = findMatches(cells, BOARD_WIDTH, 8)
+    const groups = findMatches(cells, BOARD_WIDTH, BOARD_HEIGHT)
     expect(groups.some((g) => g.color === 'gold' && g.indices.length >= 3)).toBe(true)
+  })
+
+  it('detects a 2x2 square and an L of three as matches', () => {
+    const quiet = Array.from({ length: BOARD_SIZE }, (_, i) => {
+      const x = i % BOARD_WIDTH
+      const y = Math.floor(i / BOARD_WIDTH)
+      return starCell(STAR_COLORS[(x + y * 2) % STAR_COLORS.length]!)
+    })
+    const square = quiet.map((c) => ({ ...c }))
+    square[idx(3, 3)] = starCell('red')
+    square[idx(4, 3)] = starCell('red')
+    square[idx(3, 4)] = starCell('red')
+    square[idx(4, 4)] = starCell('red')
+    expect(findMatches(square, BOARD_WIDTH, BOARD_HEIGHT).some((g) => g.indices.length >= 4)).toBe(true)
+
+    const ell = quiet.map((c) => ({ ...c }))
+    ell[idx(0, 0)] = starCell('cyan')
+    ell[idx(1, 0)] = starCell('cyan')
+    ell[idx(0, 1)] = starCell('cyan')
+    ell[idx(1, 1)] = starCell('gold')
+    ell[idx(2, 0)] = starCell('gold')
+    ell[idx(0, 2)] = starCell('gold')
+    expect(
+      findMatches(ell, BOARD_WIDTH, BOARD_HEIGHT, [idx(0, 0)]).some(
+        (g) => g.color === 'cyan' && g.indices.length >= 3,
+      ),
+    ).toBe(true)
+    expect(findMatches(ell, BOARD_WIDTH, BOARD_HEIGHT).some((g) => g.color === 'cyan')).toBe(false)
+  })
+
+  it('opens without dead lined-up stars and always has a legal swap', () => {
+    for (const seed of [1, 7, 12, 42, 99, 404]) {
+      const state = createGame(level({ seed, colorCount: 5 }))
+      expect(hasAnyMatch(state.cells, state.width, state.height)).toBe(false)
+      expect(hasLegalSwap(state.cells, state.width, state.height)).toBe(true)
+    }
+  })
+
+  it('a matching swap settles instead of cascading forever', () => {
+    for (const seed of [1, 7, 12, 42, 77, 99, 404]) {
+      const state = createGame(level({ seed, colorCount: 5, moves: 30 }))
+      let waves = 0
+      outer: for (let i = 0; i < state.cells.length; i++) {
+        const x = i % state.width
+        const y = Math.floor(i / state.width)
+        const neighbors = [x + 1 < state.width ? i + 1 : -1, y + 1 < state.height ? i + state.width : -1]
+        for (const j of neighbors) {
+          if (j < 0) continue
+          const next = reduce(state, { type: 'swap', a: i, b: j })
+          if (next.events.some((e) => e.type === 'invalid-swap')) continue
+          waves = next.events.filter((e) => e.type === 'wave').length
+          expect(waves).toBeGreaterThan(0)
+          expect(waves).toBeLessThan(10)
+          break outer
+        }
+      }
+      expect(waves).toBeGreaterThan(0)
+    }
   })
 })
 
@@ -152,7 +229,7 @@ describe('special combos', () => {
     cells[idx(1, 4)] = starCell('gold')
     cells[idx(2, 4)] = starCell('gold')
     cells[idx(3, 4)] = starCell('gold')
-    const groups = findMatches(cells, BOARD_WIDTH, 8)
+    const groups = findMatches(cells, BOARD_WIDTH, BOARD_HEIGHT)
     expect(groups.some((g) => g.kind === 'wrapped' && g.indices.length >= 4)).toBe(true)
   })
 
@@ -169,13 +246,17 @@ describe('special combos', () => {
     expect(next.score).toBeGreaterThanOrEqual(0)
   })
 
-  it('sun flare destroys a 5x5 neighborhood — bigger than a 3-match', () => {
+  it('sun flare destroys a 3x3 neighborhood — bigger than a 3-match, not a board wipe', () => {
     const state = createGame(level({ seed: 12 }))
     const cells = state.cells.map((c) => ({ ...c }))
     cells[idx(3, 3)] = { ...starCell('gold'), special: 'wrapped' }
     const next = reduce({ ...state, cells }, { type: 'ignite-special', index: idx(3, 3) })
     const wave = next.events.find((e) => e.type === 'wave')
-    expect(wave && wave.type === 'wave' && wave.destroyed.length).toBeGreaterThanOrEqual(25)
+    expect(wave && wave.type === 'wave').toBe(true)
+    if (wave && wave.type === 'wave') {
+      expect(wave.destroyed.length).toBeGreaterThanOrEqual(9)
+      expect(wave.destroyed.length).toBeLessThan(20)
+    }
     assertNoHoles(next)
   })
 
@@ -274,5 +355,30 @@ describe('comet tail and orbit clock', () => {
     const next = reduce(far, { type: 'swap', a: idx(0, 0), b: idx(0, 1) })
     expect(next.status).toBe('playing')
     expect(next.events.some((e) => e.type === 'invalid-swap' || e.type === 'swap' || e.type === 'wave')).toBe(true)
+  })
+})
+
+describe('starburst finale', () => {
+  it('caps leftover moves as suns and stays in finale instead of wiping the board', () => {
+    const state = createGame(level({ seed: 9, moves: 20 }))
+    const finale = convertMovesToSpecials({ ...state, movesLeft: 20 })
+    const suns = finale.cells.filter((c) => c.special !== 'none').length
+    expect(finale.status).toBe('finale')
+    expect(suns).toBeGreaterThan(0)
+    expect(suns).toBeLessThanOrEqual(FINALE_SUN_CAP)
+    expect(finale.movesLeft).toBe(0)
+  })
+
+  it('ignites one leftover sun per finale tick', () => {
+    const state = createGame(level({ seed: 9, moves: 8 }))
+    const finale = convertMovesToSpecials({ ...state, movesLeft: 8 })
+    const before = finale.cells.filter((c) => c.special !== 'none').length
+    const ticked = reduce(finale, { type: 'tick-finale' })
+    const after = ticked.cells.filter((c) => c.special !== 'none').length
+    expect(after).toBeLessThan(before)
+    expect(ticked.events.some((e) => e.type === 'wave')).toBe(true)
+    assertNoHoles(ticked)
+    if (after === 0) expect(ticked.status).toBe('won')
+    else expect(ticked.status).toBe('finale')
   })
 })

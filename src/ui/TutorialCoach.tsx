@@ -16,6 +16,9 @@ export function TutorialCoach({
 }) {
   return (
     <div className="tutorial-stage">
+      <button type="button" className="tutorial-skip-tab" onClick={onSkip}>
+        Skip tutorial
+      </button>
       <div className="tutorial-scene">
         <div className="tutorial-mascot" aria-hidden>
           <BlazingSun id="coach-sun" special="none" />
@@ -42,8 +45,8 @@ export function TutorialCoach({
                       : 'Clear the orbit goal to graduate…'}
               </p>
             )}
-            <button type="button" className="text-[11px] text-white/45" onClick={onSkip}>
-              Skip school
+            <button type="button" className="text-[11px] uppercase tracking-widest text-white/50" onClick={onSkip}>
+              Skip tutorial
             </button>
           </div>
         </div>

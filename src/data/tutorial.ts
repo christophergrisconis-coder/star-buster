@@ -1,7 +1,16 @@
-import { starCell, type Cell, type GameState, type LevelConfig, type StarColor } from '~/engine/types'
+import {
+  BOARD_SIZE,
+  BOARD_WIDTH,
+  idx,
+  starCell,
+  type Cell,
+  type GameState,
+  type LevelConfig,
+  type StarColor,
+} from '~/engine/types'
 
-export const TUTORIAL_PAIR = { a: 51, b: 43 }
-export const TUTORIAL_SUN = 63
+export const TUTORIAL_PAIR = { a: idx(3, 7), b: idx(3, 6) }
+export const TUTORIAL_SUN = idx(BOARD_WIDTH - 1, 8)
 
 export type LessonId =
   | 'welcome'
@@ -27,14 +36,14 @@ export const LESSONS: LessonStep[] = [
   {
     id: 'welcome',
     title: 'Welcome aboard, Pilot',
-    body: 'This is Flight School. I’ll pause on each beat — you fly the move. Tap Next when you’re ready.',
+    body: 'Flight School walks each control once, then you enter Amber Veil 1-1. Tap Next after you read a beat — or hit Skip tutorial anytime.',
     wait: 'next',
     focus: 'board',
   },
   {
     id: 'swap',
     title: 'Slide two neighbors',
-    body: 'Drag the glowing blue star onto the gold beside it. Three of a kind burst. That’s the whole voyage in one swipe.',
+    body: 'Drag the glowing blue star onto the gold beside it. Three in a row — or three in a square corner — burst. That’s the voyage in one swipe.',
     wait: 'swap',
     pair: TUTORIAL_PAIR,
     spotlight: [TUTORIAL_PAIR.a, TUTORIAL_PAIR.b],
@@ -43,7 +52,7 @@ export const LESSONS: LessonStep[] = [
   {
     id: 'goal',
     title: 'Orbit goal',
-    body: 'The gold card is how the stage ends. Clear every nebula jelly (or whatever it asks). Score is flavor — the goal is the gate.',
+    body: 'The glowing Orbit challenge card is the only way to pass. Burst stars on the bright cyan tiles to clear nebula jelly. Score is flavor — the challenge is the gate.',
     wait: 'next',
     focus: 'goal',
   },
@@ -57,7 +66,7 @@ export const LESSONS: LessonStep[] = [
   {
     id: 'power',
     title: 'Solar flare',
-    body: 'Bottom-right is a power play — a blazing sun, not a regular star. Swap it, or tap it twice to ignite the flares.',
+    body: 'Bottom-right is a power play — a blazing sun, not a regular star. Swap it, or tap it twice to ignite a 3×3 flare.',
     wait: 'ignite',
     spotlight: [TUTORIAL_SUN],
     focus: 'board',
@@ -109,29 +118,33 @@ export const TUTORIAL_LEVEL: LevelConfig = {
   swirls: [],
   chocolate: [],
   bombs: [],
-  jelly: Array.from({ length: 64 }, (_, i) => ([43, 49, 50, 51, 58, 59, 60, 61].includes(i) ? 1 : 0)),
+  jelly: Array.from({ length: BOARD_SIZE }, (_, i) =>
+    [idx(3, 6), idx(1, 7), idx(2, 7), idx(3, 7), idx(2, 8), idx(3, 8), idx(4, 8), idx(5, 8)].includes(i)
+      ? 1
+      : 0,
+  ),
   ingredients: [],
-  exits: Array.from({ length: 8 }, () => true),
+  exits: Array.from({ length: BOARD_WIDTH }, (_, i) => i),
   timeLimit: 180,
 }
 
 export function applyTutorialBoard(state: GameState): GameState {
   const cells = state.cells.map((cell, i) => {
-    const x = i % 8
-    const y = Math.floor(i / 8)
+    const x = i % BOARD_WIDTH
+    const y = Math.floor(i / BOARD_WIDTH)
     const color = COLORS[(x + y * 3) % 5]!
     return {
       ...paint(color),
       jelly: cell.jelly,
     }
   })
-  cells[49] = { ...paint('gold'), jelly: cells[49]!.jelly }
-  cells[50] = { ...paint('gold'), jelly: cells[50]!.jelly }
-  cells[51] = { ...paint('blue'), jelly: cells[51]!.jelly }
-  cells[43] = { ...paint('gold'), jelly: cells[43]!.jelly }
-  cells[42] = { ...paint('red'), jelly: cells[42]!.jelly }
-  cells[44] = { ...paint('cyan'), jelly: cells[44]!.jelly }
-  cells[63] = { ...paint('gold'), special: 'wrapped', jelly: cells[63]!.jelly }
+  cells[idx(1, 7)] = { ...paint('gold'), jelly: cells[idx(1, 7)]!.jelly }
+  cells[idx(2, 7)] = { ...paint('gold'), jelly: cells[idx(2, 7)]!.jelly }
+  cells[idx(3, 7)] = { ...paint('blue'), jelly: cells[idx(3, 7)]!.jelly }
+  cells[idx(3, 6)] = { ...paint('gold'), jelly: cells[idx(3, 6)]!.jelly }
+  cells[idx(2, 6)] = { ...paint('red'), jelly: cells[idx(2, 6)]!.jelly }
+  cells[idx(4, 6)] = { ...paint('cyan'), jelly: cells[idx(4, 6)]!.jelly }
+  cells[TUTORIAL_SUN] = { ...paint('gold'), special: 'wrapped', jelly: cells[TUTORIAL_SUN]!.jelly }
   return {
     ...state,
     cells,
