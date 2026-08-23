@@ -1564,27 +1564,23 @@ html.light .chrome-nav {
 
 .kit-pickup {
   position: absolute;
-  z-index: 30;
+  z-index: 8;
   display: grid;
-  width: 22%;
-  min-width: 52px;
   place-items: center;
-  gap: 2px;
-  padding: 6px 4px;
-  border-radius: 18px;
-  border: 1px solid rgba(255, 210, 74, 0.7);
-  background: radial-gradient(circle at 40% 20%, #ffd24a, #1c140c);
-  color: #1c140c;
-  transform: translate(-50%, -50%);
-  animation: kit-pickup-pop 5.4s ease-out both;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
   pointer-events: auto;
+  cursor: pointer;
+  transform: translate(-50%, -50%);
+  animation: kit-pickup-pop 1.2s ease-out both;
 }
 
-.kit-pickup span {
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+.kit-pickup-logo {
+  width: 62%;
+  height: 62%;
+  filter: drop-shadow(0 0 8px #ffd24a99);
 }
 
 .kit-store-mark {
@@ -1600,18 +1596,15 @@ html.light .chrome-nav {
 
 @keyframes kit-pickup-pop {
   0% {
-    transform: translate(-50%, -50%) scale(0.4);
+    transform: translate(-50%, -50%) scale(0.5);
     opacity: 0;
   }
-  12% {
-    transform: translate(-50%, -50%) scale(1.08);
-    opacity: 1;
-  }
-  82% {
+  18% {
+    transform: translate(-50%, -58%) scale(1);
     opacity: 1;
   }
   100% {
-    transform: translate(-50%, -70%) scale(0.9);
+    transform: translate(-50%, -110%) scale(0.7);
     opacity: 0;
   }
 }
@@ -2249,34 +2242,6 @@ html.light .chrome-nav {
   text-transform: uppercase;
 }
 
-.voyage-cinema {
-  position: fixed;
-  inset: 0;
-  z-index: 70;
-  display: grid;
-  place-content: center;
-  pointer-events: none;
-  background: radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--scene, #6b7c8a) 28%, #07060a), rgba(4, 3, 6, 0.92));
-  animation: next-orbit-veil 400ms ease-out, next-orbit-copy 700ms ease-out;
-  text-align: center;
-}
-
-.voyage-cinema p,
-.voyage-cinema span {
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: rgba(239, 230, 210, 0.55);
-}
-
-.voyage-cinema h2 {
-  margin: 10px 0 8px;
-  font-family: var(--font-serif);
-  font-size: 36px;
-  font-weight: 500;
-  letter-spacing: -0.03em;
-  color: #f6efe0;
-}
-
 @keyframes globe-breathe {
   0%,
   100% {
@@ -2334,7 +2299,6 @@ html.light .chrome-nav {
 @media (prefers-reduced-motion: reduce) {
   .goal-card--hero,
   .jelly-well,
-  .voyage-cinema,
   .globe-halo,
   .globe-photo,
   .globe-shine,

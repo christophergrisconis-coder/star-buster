@@ -66,7 +66,7 @@ export const LESSONS: LessonStep[] = [
   {
     id: 'power',
     title: 'Solar flare',
-    body: 'Bottom-right is a power play — a blazing sun, not a regular star. Swap it, or tap it twice to ignite a 3×3 flare.',
+    body: 'Bottom-right is a power play — a blazing sun, not a regular star. Swap it into a 3-match to flare, or tap it twice to ignite a 3×3 burst.',
     wait: 'ignite',
     spotlight: [TUTORIAL_SUN],
     focus: 'board',
@@ -74,7 +74,7 @@ export const LESSONS: LessonStep[] = [
   {
     id: 'tray',
     title: 'Solar kit',
-    body: 'The tray under the board is your kit. Arm the Meteor, then tap a star. Later, rare logos pop on the sky — tap them to stash a charge. The shop sells more as you open sectors.',
+    body: 'The tray under the board is your kit. Arm the Meteor, then tap a star. Later, rare logos pop on the sky and stash themselves — tap one to grab it sooner. The shop sells more as you open sectors.',
     wait: 'booster',
     focus: 'tray',
   },

@@ -639,8 +639,7 @@ export function reduce(state: GameState, action: EngineAction): GameState {
 
   const swapped = swapCells(current.cells, a, b)
   const matches = findMatches(swapped, current.width, current.height, [a, b])
-  const specialSeeds = [a, b].filter((i) => swapped[i]!.special !== 'none')
-  if (matches.length === 0 && specialSeeds.length === 0) {
+  if (matches.length === 0) {
     return { ...current, events: [{ type: 'invalid-swap', a, b }] }
   }
 
@@ -651,7 +650,7 @@ export function reduce(state: GameState, action: EngineAction): GameState {
     cometTail: current.cometTail + 1,
     events: [{ type: 'swap', a, b }],
   }
-  current = matches.length === 0 ? blastAndRefill(current, specialSeeds, 1) : resolveCascades(current, [a, b])
+  current = resolveCascades(current, [a, b])
   current = rewardForMove(current)
   return finishMove(current, true)
 }

@@ -1,4 +1,4 @@
-import { kitLabelForItem, KIT_SLOTS, kitItemIds, type KitSlotId } from '~/data/kit'
+import { KIT_SLOTS, kitItemIds, type KitSlotId } from '~/data/kit'
 import { KitIcon } from './KitIcon'
 
 export interface ActivePickup {
@@ -20,7 +20,7 @@ export function KitPickup({
   pickup: ActivePickup
   width: number
   height: number
-  onCollect: () => void
+  onCollect?: () => void
 }) {
   const x = pickup.index % width
   const y = Math.floor(pickup.index / width)
@@ -29,19 +29,19 @@ export function KitPickup({
     <button
       type="button"
       className="kit-pickup"
+      aria-label="Stash kit charge"
+      onClick={(e) => {
+        e.stopPropagation()
+        onCollect?.()
+      }}
       style={{
         left: `${((x + 0.5) / width) * 100}%`,
         top: `${((y + 0.5) / height) * 100}%`,
+        width: `${100 / width}%`,
+        height: `${100 / height}%`,
       }}
-      onPointerDown={(e) => e.stopPropagation()}
-      onClick={(e) => {
-        e.stopPropagation()
-        onCollect()
-      }}
-      aria-label={`Collect ${kitLabelForItem(pickup.item)}`}
     >
-      <KitIcon id={id} className="h-8 w-8" />
-      <span>{kitLabelForItem(pickup.item)}</span>
+      <KitIcon id={id} className="kit-pickup-logo" />
     </button>
   )
 }

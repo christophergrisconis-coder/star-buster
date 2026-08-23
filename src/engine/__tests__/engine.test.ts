@@ -260,15 +260,29 @@ describe('special combos', () => {
     assertNoHoles(next)
   })
 
-  it('swapping a sun with a non-matching neighbor still ignites', () => {
+  it('swapping a sun without a 3-match bounces', () => {
     const state = createGame(level({ seed: 11 }))
     const cells = state.cells.map((c) => ({ ...c }))
     cells[idx(0, 7)] = { ...starCell('gold'), special: 'wrapped' }
     cells[idx(1, 7)] = starCell('blue')
     cells[idx(2, 7)] = starCell('red')
     const next = reduce({ ...state, cells }, { type: 'swap', a: idx(0, 7), b: idx(1, 7) })
-    expect(next.events.some((e) => e.type === 'wave')).toBe(true)
+    expect(next.events.some((e) => e.type === 'invalid-swap')).toBe(true)
+    expect(next.events.some((e) => e.type === 'wave')).toBe(false)
+    expect(next.cells[idx(0, 7)]!.special).toBe('wrapped')
+    assertNoHoles(next)
+  })
+
+  it('swapping a sun into a 3-match still detonates', () => {
+    const state = createGame(level({ seed: 11 }))
+    const cells = state.cells.map((c) => ({ ...c }))
+    cells[idx(0, 7)] = { ...starCell('gold'), special: 'wrapped' }
+    cells[idx(1, 7)] = starCell('blue')
+    cells[idx(2, 7)] = starCell('gold')
+    cells[idx(3, 7)] = starCell('gold')
+    const next = reduce({ ...state, cells }, { type: 'swap', a: idx(0, 7), b: idx(1, 7) })
     expect(next.events.some((e) => e.type === 'invalid-swap')).toBe(false)
+    expect(next.events.some((e) => e.type === 'wave')).toBe(true)
     assertNoHoles(next)
   })
 

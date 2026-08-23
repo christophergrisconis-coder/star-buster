@@ -24,8 +24,6 @@ type PathNode = {
   orbits: number
 }
 
-type Region = { key: string; title: string; blurb: string; color: string; kind: 'sector' | 'nebula' }
-
 function buildNodes(includeSchool: boolean): PathNode[] {
   const nodes: PathNode[] = []
   if (includeSchool) {
@@ -76,19 +74,29 @@ export function VoyageMap() {
   const scroller = useRef<HTMLDivElement>(null)
   const travelRef = useRef(0)
   const primed = useRef(false)
-  const lastRegion = useRef('')
   const [step, setStep] = useState(280)
   const [dest, setDest] = useState<ReturnType<typeof playDestination> | null>(null)
   const [school, setSchool] = useState(() => typeof window === 'undefined' || !hasCompletedTutorial())
   const [travel, setTravel] = useState(0)
-  const [cinema, setCinema] = useState<Region | null>(null)
-  const progress = typeof window === 'undefined' ? { levels: {}, guest: true } : getProgress()
+  const [progress, setProgress] = useState(() =>
+    typeof window === 'undefined' ? { levels: {}, guest: true } : getProgress(),
+  )
 
   useEffect(() => {
-    setDest(playDestination())
-    setSchool(!hasCompletedTutorial())
+    const refresh = () => {
+      setDest(playDestination())
+      setSchool(!hasCompletedTutorial())
+      setProgress(getProgress())
+    }
+    refresh()
+    window.addEventListener('focus', refresh)
+    document.addEventListener('visibilitychange', refresh)
     document.body.classList.add('voyage-live')
-    return () => document.body.classList.remove('voyage-live')
+    return () => {
+      window.removeEventListener('focus', refresh)
+      document.removeEventListener('visibilitychange', refresh)
+      document.body.classList.remove('voyage-live')
+    }
   }, [])
 
   const nodes = useMemo(() => buildNodes(school), [school])
@@ -119,7 +127,6 @@ export function VoyageMap() {
       el.scrollTop = start.index * step
       travelRef.current = start.index
       setTravel(start.index)
-      lastRegion.current = start.nebulaId
       return
     }
     el.scrollTop = travelRef.current * step
@@ -142,26 +149,6 @@ export function VoyageMap() {
   const hereTheme = nebulaTheme(current?.nebulaId ?? 'void', current?.sectorColor)
   const ahead = nodes[Math.min(nodes.length - 1, Math.ceil(travel))]
   const mix = ahead && ahead.nebulaId !== current?.nebulaId ? travel - Math.floor(travel) : 0
-
-  const announce = (node: PathNode | undefined) => {
-    if (!node || lastRegion.current === node.nebulaId) return
-    const prev = lastRegion.current
-    lastRegion.current = node.nebulaId
-    if (!prev) return
-    const sectorShift = !nodes.some((n) => n.nebulaId === prev && n.sectorName === node.sectorName)
-    setCinema({
-      key: node.nebulaId,
-      title: sectorShift ? node.sectorName : node.name,
-      blurb: sectorShift ? node.name : node.systemName,
-      color: node.sectorColor,
-      kind: sectorShift ? 'sector' : 'nebula',
-    })
-    window.setTimeout(() => setCinema((cur) => (cur?.key === node.nebulaId ? null : cur)), 1600)
-  }
-
-  useEffect(() => {
-    announce(nodes[index])
-  }, [index])
 
   const jump = (node: PathNode, allowed: boolean) => {
     if (node.index !== index) {
@@ -274,14 +261,6 @@ export function VoyageMap() {
                 : 'Nebula sealed'}
           </button>
         </footer>
-      ) : null}
-
-      {cinema ? (
-        <div className="voyage-cinema" style={{ ['--scene' as string]: cinema.color }}>
-          <p>{cinema.kind === 'sector' ? 'Sector' : 'Nebula'}</p>
-          <h2>{cinema.title}</h2>
-          <span>{cinema.blurb}</span>
-        </div>
       ) : null}
     </div>
   )

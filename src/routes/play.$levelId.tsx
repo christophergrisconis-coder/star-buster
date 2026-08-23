@@ -122,6 +122,7 @@ function PlayPage() {
   const [kitNote, setKitNote] = useState<string | null>(null)
   const [orbitJump, setOrbitJump] = useState(false)
   const nebulaBoostUsed = useRef(false)
+  const shieldArmed = useRef(false)
   const awardedRef = useRef(false)
   const jumpedRef = useRef(false)
   const winClipSeen = useRef(false)
@@ -149,6 +150,7 @@ function PlayPage() {
     setPickup(null)
     setOrbitJump(false)
     nebulaBoostUsed.current = false
+    shieldArmed.current = false
     jumpedRef.current = false
     winClipSeen.current = false
     setState(isLesson ? applyTutorialBoard(next) : next)
@@ -243,25 +245,6 @@ function PlayPage() {
     setKitCounts(readKitCounts())
   }, [kitTick])
 
-  useEffect(() => {
-    if (!state || isLesson || noBoosters || nebulaBoostUsed.current) return
-    if (state.status !== 'playing') return
-    if (!consumeItem('nebula-boost')) return
-    nebulaBoostUsed.current = true
-    setKitTick((n) => n + 1)
-    setState((s) => (s ? { ...s, movesLeft: s.movesLeft + 3, timeLeft: s.timeLeft + 12 } : s))
-    setKitNote('Nebula booster: +3 moves, +12s')
-    window.setTimeout(() => setKitNote(null), 2200)
-  }, [state?.levelId, isLesson, noBoosters])
-
-  useEffect(() => {
-    if (isLesson || !state || state.status !== 'playing') return
-    if (level.sectorId > 2) return
-    const t = window.setTimeout(() => {
-      setPickup((cur) => cur ?? { key: Date.now(), item: 'solar-flare', index: 27 })
-    }, 800)
-    return () => window.clearTimeout(t)
-  }, [state?.levelId, isLesson, level.sectorId])
 
   const stowPickup = (item: string) => {
     grantItem(item, 1)
@@ -273,7 +256,7 @@ function PlayPage() {
 
   useEffect(() => {
     if (!pickup) return
-    const t = window.setTimeout(() => stowPickup(pickup.item), 2400)
+    const t = window.setTimeout(() => stowPickup(pickup.item), 1200)
     return () => window.clearTimeout(t)
   }, [pickup?.key])
 
@@ -287,6 +270,19 @@ function PlayPage() {
       if (e.type === 'special-combo') setSawSpecial(true)
       if (e.type === 'kit-drop') {
         setPickup({ key: Date.now(), item: e.item, index: e.index })
+      }
+      if (
+        e.type === 'wave' &&
+        !nebulaBoostUsed.current &&
+        !isLesson &&
+        !noBoosters &&
+        consumeItem('nebula-boost')
+      ) {
+        nebulaBoostUsed.current = true
+        setKitTick((n) => n + 1)
+        setState((s) => (s ? { ...s, movesLeft: s.movesLeft + 3, timeLeft: s.timeLeft + 12 } : s))
+        setKitNote('Nebula booster: +3 moves, +12s')
+        window.setTimeout(() => setKitNote(null), 2200)
       }
       if (e.type === 'comet-tail' && e.decayed) {
         tailDeadline.current = null
@@ -371,7 +367,8 @@ function PlayPage() {
       setCometRemainMs(left)
       if (left <= 0) {
         tailDeadline.current = null
-        if (consumeItem('comet-tail-shield') || consumeItem('ion-wake-shield')) {
+        if (shieldArmed.current) {
+          shieldArmed.current = false
           tailPause.current = cometMs
           tailDeadline.current = performance.now() + cometMs
           setCometRemainMs(cometMs)
@@ -550,9 +547,16 @@ function PlayPage() {
           }}
           onSwap={(a, b) => {
             if (state.status !== 'playing') return
-            setState((s) => (s ? reduce(s, { type: 'swap', a, b }) : s))
+            const next = reduce(state, { type: 'swap', a, b })
+            setState(next)
             if (lesson?.wait === 'swap') advanceLesson()
-            if (lesson?.wait === 'ignite' && (a === TUTORIAL_SUN || b === TUTORIAL_SUN)) advanceLesson()
+            if (
+              lesson?.wait === 'ignite' &&
+              (a === TUTORIAL_SUN || b === TUTORIAL_SUN) &&
+              next.events.some((e) => e.type === 'wave')
+            ) {
+              advanceLesson()
+            }
           }}
           onIgnite={(index) => {
             if (state.status !== 'playing') return
@@ -599,7 +603,13 @@ function PlayPage() {
               return
             }
             if (id === 'shield') {
+              if (shieldArmed.current) {
+                setKitNote('Wake is already armed')
+                window.setTimeout(() => setKitNote(null), 1600)
+                return
+              }
               if (!consumeAny(kitItemIds(slotById('shield')))) return
+              shieldArmed.current = true
               bumpKit()
               setKitNote('Wake shield armed for the next fade')
               window.setTimeout(() => setKitNote(null), 1800)

@@ -1,5 +1,6 @@
 import type { KitSlotId } from '~/data/kit'
 
+/** Same emblems used on the kit tray, shop labels, and sky drops. */
 export function KitIcon({
   id,
   armed = false,
@@ -9,41 +10,42 @@ export function KitIcon({
   armed?: boolean
   className?: string
 }) {
-  const stroke = armed ? '#1c140c' : '#ffd24a'
+  const ink = armed ? '#1c140c' : '#ffd24a'
   return (
-    <svg viewBox="0 0 32 32" className={className} fill="none" stroke={stroke} strokeWidth="1.6">
+    <svg viewBox="0 0 32 32" className={className} fill={ink} aria-hidden>
       {id === 'flare' ? (
         <>
-          <circle cx="16" cy="16" r="5.5" fill={stroke} stroke="none" />
-          <path d="M16 3 L16 8 M16 24 L16 29 M4 16 H9 M23 16 H28 M7 7 l3.2 3.2 M21.8 21.8 l3.2 3.2 M25 7 l-3.2 3.2 M7 25 l3.2-3.2" strokeLinecap="round" />
+          <circle cx="16" cy="16" r="5.2" />
+          <path d="M15.1 2.2h1.8v6.2h-1.8zm0 21.4h1.8v6.2h-1.8zM2.2 15.1h6.2v1.8H2.2zm21.4 0h6.2v1.8h-6.2z" />
+          <path d="m6.1 6.1 1.3-1.3 4.4 4.4-1.3 1.3zm13.1 13.1 1.3-1.3 4.4 4.4-1.3 1.3zM24.6 4.8l1.3 1.3-4.4 4.4-1.3-1.3zM6.1 25.9l1.3 1.3 4.4-4.4-1.3-1.3z" />
         </>
       ) : id === 'hammer' ? (
-        <>
-          <path d="M8 22 L20 10" strokeLinecap="round" />
-          <path d="M18 8 l6 6 -3 3 -6 -6z" fill={stroke} stroke="none" />
-        </>
+        <path d="M20.2 4.6 27 11.4l-3.2 3.2-1.7-1.7-9.6 9.6c-.7.7-1.9.8-2.7.2l-.8.8-2.2-2.2.8-.8c-.6-.8-.5-2 .2-2.7l9.6-9.6-1.7-1.7 3.2-3.2Zm-8.4 16.1 8.8-8.8 1.6 1.6-8.8 8.8-.8-.8c.4-.2.6-.5.7-.8Z" />
       ) : id === 'well' ? (
         <>
-          <circle cx="16" cy="16" r="8.5" />
-          <circle cx="16" cy="16" r="4" />
-          <path d="M16 5 v4 M16 23 v4 M5 16 h4 M23 16 h4" strokeLinecap="round" />
+          <path
+            fill="none"
+            stroke={ink}
+            strokeWidth="2"
+            d="M16 6.5a9.5 9.5 0 1 1-8.2 4.7"
+            strokeLinecap="round"
+          />
+          <circle cx="16" cy="16" r="3.2" />
         </>
       ) : id === 'moves' ? (
-        <path d="M8 20c8-2 10-10 16-12-4 8-2 14-8 16 2-4 0-8-8-4z" strokeLinejoin="round" />
+        <path d="M7.2 24.6c2.4-5.2 6.6-8.4 12.6-9.1l-2.2-2.2 8.8-1.4-1.4 8.8-2.3-2.3c-4.2 2.2-7.2 6.6-7.8 11.4-2.6-1.8-5.3-3.4-7.7-5.2Z" />
       ) : id === 'orbit' ? (
-        <circle cx="16" cy="16" r="8" strokeDasharray="3 3" />
+        <>
+          <circle cx="16" cy="16" r="10" fill="none" stroke={ink} strokeWidth="2" />
+          <circle cx="16" cy="16" r="1.6" />
+          <path d="M16 8.2v8l5.2 3.1" fill="none" stroke={ink} strokeWidth="2" strokeLinecap="round" />
+        </>
       ) : id === 'splash' ? (
-        <>
-          <circle cx="16" cy="16" r="5" />
-          <path d="M16 5 C22 10 22 22 16 27 C10 22 10 10 16 5" />
-        </>
+        <path d="M16 4.4c4.8 5.4 8.4 10 8.4 14.2A8.4 8.4 0 1 1 7.6 18.6C7.6 14.4 11.2 9.8 16 4.4Z" />
       ) : id === 'shield' ? (
-        <path d="M16 5 l8 4 v7c0 6-3.6 9.2-8 11-4.4-1.8-8-5-8-11V9z" strokeLinejoin="round" />
+        <path d="M16 3.8 26 8.2v7.4c0 6.8-4.1 10.8-10 13.2-5.9-2.4-10-6.4-10-13.2V8.2L16 3.8Z" />
       ) : (
-        <>
-          <path d="M8 12 h16 M8 20 h16" strokeLinecap="round" />
-          <path d="M11 9 l-3 3 3 3 M21 17 l3 3 -3 3" strokeLinecap="round" strokeLinejoin="round" />
-        </>
+        <path d="M6 10.2h12.4l-2.6-2.6 1.6-1.6 5.4 5.4-5.4 5.4-1.6-1.6 2.6-2.6H6zm20 11.6H13.6l2.6 2.6-1.6 1.6-5.4-5.4 5.4-5.4 1.6 1.6-2.6 2.6H26z" />
       )}
     </svg>
   )
