@@ -23,4 +23,11 @@ describe('store catalog', () => {
     expect(skip.minSector).toBeGreaterThanOrEqual(2)
     expect(skip.price).toBeGreaterThan(STORE_CATALOG.find((i) => i.id === 'hammer')!.price)
   })
+
+  it('keeps unique ids and a deep catalog', () => {
+    const ids = STORE_CATALOG.map((i) => i.id)
+    expect(new Set(ids).size).toBe(ids.length)
+    expect(STORE_CATALOG.filter((i) => !i.hidden).length).toBeGreaterThanOrEqual(120)
+    expect(STORE_CATALOG.filter((i) => i.kind === 'skin' && !i.hidden).length).toBeGreaterThanOrEqual(20)
+  })
 })

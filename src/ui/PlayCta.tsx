@@ -21,6 +21,7 @@ export function PlayCta() {
   }, [])
 
   return (
+    <>
     <button
       type="button"
       onClick={() => {
@@ -31,14 +32,14 @@ export function PlayCta() {
             void navigate({
               to: '/play/$levelId',
               params: { levelId: 'tutorial' },
-              search: { challenge: undefined },
+              search: { challenge: undefined, seed: undefined },
             })
             return
           }
           void navigate({
             to: '/play/$levelId',
             params: { levelId: String(next.levelId) },
-            search: { challenge: undefined },
+            search: { challenge: undefined, seed: undefined },
           })
         })
       }}
@@ -49,5 +50,22 @@ export function PlayCta() {
         {dest.name} · {dest.system}
       </span>
     </button>
+    <button
+      type="button"
+      className="mt-1 w-full text-[11px] text-gold"
+      onClick={() => {
+        synth.whoosh()
+        requestWarpThen(() => {
+          void navigate({
+            to: '/play/$levelId',
+            params: { levelId: 'daily' },
+            search: { challenge: undefined, seed: undefined },
+          })
+        })
+      }}
+    >
+      Daily orbit
+    </button>
+    </>
   )
 }

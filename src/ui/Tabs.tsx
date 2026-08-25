@@ -27,7 +27,7 @@ const TABS = [
   {
     to: '/store',
     label: 'Shop',
-    match: (p: string) => p.startsWith('/store'),
+    match: (p: string) => p.startsWith('/store') || p.startsWith('/lucky-draw'),
     icon: (
       <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.7">
         <path d="M5 8.5h14l-1.1 10.2a2 2 0 01-2 1.8H8.1a2 2 0 01-2-1.8L5 8.5z" strokeLinejoin="round" />

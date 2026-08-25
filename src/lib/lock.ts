@@ -18,6 +18,7 @@ export function isAuthedPilot(progress: ProgressBlob): boolean {
 /** Guests may freely fly 1–3. Signed-in pilots follow the sequential 250-level lock. */
 export function isLevelPlayable(levelId: number, progress: ProgressBlob): boolean {
   if (!Number.isFinite(levelId) || levelId < 1 || levelId > 250) return false
+  if (progress.admin) return true
   if (!isAuthedPilot(progress)) return guestUnlocked(levelId)
   return levelId <= nextSequentialLevel(progress)
 }
@@ -87,6 +88,7 @@ export function activeNebulaId(progress: ProgressBlob): string {
 
 /** Skip stays inside an already-unlocked sector; never opens a locked sector. */
 export function canSkipLevel(levelId: number, progress: ProgressBlob): boolean {
+  if (progress.admin) return Number.isFinite(levelId) && levelId >= 1 && levelId <= 250
   if (!isLevelPlayable(levelId, progress)) return false
   const level = LEVEL_BY_ID[levelId]
   if (!level) return false

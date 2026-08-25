@@ -1,7 +1,7 @@
 import { CAMPAIGN, LEVELS } from './campaign'
 export { CAMPAIGN, LEVELS, LEVEL_BY_ID, generateCampaign } from './campaign'
 export { SECTORS } from './sectors'
-export { STORE_CATALOG, SKINS } from './store'
+export { STORE_CATALOG, SKINS, SKIN_FILTERS } from './store'
 export type { StoreItem, StoreKind } from './store'
 
 export function getSystem(id: string) {

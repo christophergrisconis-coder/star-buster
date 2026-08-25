@@ -1,9 +1,12 @@
 import type { StoreItem } from '~/data/store'
 import { LEVEL_BY_ID } from '~/data/campaign'
+import { LIFE_MAX } from '~/data/gifts'
 import { BADGES } from '~/data/rewards'
 import {
   canSkipLevel,
   isLevelPlayable,
+  nebulaLevelIds,
+  nebulaRequiredComplete,
   nextPlayTarget,
   nextSequentialLevel,
 } from './lock'
@@ -33,11 +36,16 @@ export interface Inventory {
 export interface ProgressBlob {
   levels: Record<number, LevelRecord>
   guest: boolean
+  admin?: boolean
   nebulaChallenges?: Record<string, { completed: boolean; at?: string }>
   challengeRerolls?: Record<string, number>
   badges?: string[]
   lastNebulaId?: string
   lastActiveAt?: number
+  stamps?: Record<string, boolean>
+  cometStreak?: number
+  cometBest?: number
+  dailyBest?: Record<string, number>
 }
 
 export interface LocalFriend {
@@ -48,14 +56,20 @@ export interface LocalFriend {
 }
 
 const ADMIN_KIT: Record<string, number> = {
-  hammer: 5,
-  'solar-flare': 5,
-  'moves-5': 3,
-  'orbit-time': 3,
-  'gravity-well': 2,
-  'color-splash': 2,
-  'ion-wake-shield': 2,
-  'star-shuffle': 1,
+  hammer: 99,
+  'solar-flare': 99,
+  'moves-5': 99,
+  'orbit-time': 99,
+  'orbit-time-deep': 99,
+  'freeze-orbit': 99,
+  'gravity-well': 99,
+  'color-splash': 99,
+  'ion-wake-shield': 99,
+  'comet-tail-shield': 99,
+  'star-shuffle': 99,
+  'nebula-boost': 99,
+  'challenge-reroll': 99,
+  'nebula-skip': 99,
 }
 
 const defaultInv = (): Inventory => ({
@@ -94,7 +108,18 @@ const ADMIN_KEY = 'star-buster-admin'
 
 export function isAdminPilot(): boolean {
   if (typeof window === 'undefined') return false
-  return localStorage.getItem(ADMIN_KEY) === '1' || import.meta.env.DEV
+  if (localStorage.getItem(ADMIN_KEY) === '1') return true
+  return import.meta.env.DEV && localStorage.getItem(ADMIN_KEY) === 'dev'
+}
+
+export function loginAdminDock(password: string): { error?: string } {
+  const dock = import.meta.env.VITE_ADMIN_PASSWORD ?? 'orbit-admin'
+  const owner = import.meta.env.VITE_OWNER_PASSWORD
+  const code = password.trim()
+  if (code !== dock && !(owner && code === owner)) return { error: 'Wrong dock code' }
+  setAdminPilot(true)
+  unlockAdminVoyage()
+  return {}
 }
 
 export function setAdminPilot(on: boolean) {
@@ -111,22 +136,36 @@ export function grantItem(id: string, n = 1) {
 
 export function grantAdminKit(): { error?: string } {
   if (!isAdminPilot()) return { error: 'Admin only' }
+  unlockAdminVoyage()
+  return {}
+}
+
+export function unlockAdminVoyage() {
+  const p = getProgress()
+  p.guest = false
+  p.admin = true
+  write(KEY, p)
   const inv = getInventory()
+  inv.coins = Math.max(inv.coins, 99_999)
+  inv.stardust = Math.max(inv.stardust, 99_999)
+  inv.lives = LIFE_MAX
+  inv.sector = 5
   for (const [id, n] of Object.entries(ADMIN_KIT)) {
-    inv.items[id] = (inv.items[id] ?? 0) + n
+    inv.items[id] = Math.max(inv.items[id] ?? 0, n)
   }
   write(INV, inv)
-  return {}
 }
 
 export function highestUnlocked(): number {
   const p = getProgress()
+  if (p.admin || isAdminPilot()) return 250
   const next = nextSequentialLevel(p)
   if (p.guest) return Math.max(next, 3)
   return next
 }
 
 export function canPlay(levelId: number, _authed?: boolean): boolean {
+  if (isAdminPilot()) return Number.isFinite(levelId) && levelId >= 1 && levelId <= 250
   return isLevelPlayable(levelId, getProgress())
 }
 
@@ -142,6 +181,10 @@ export function recordWin(
 ) {
   const p = getProgress()
   const prev = p.levels[levelId]
+  const nebulaId = LEVEL_BY_ID[levelId]?.nebulaId
+  const nebulaWasDone = nebulaId ? nebulaRequiredComplete(nebulaId, p) : true
+  const sectorBefore = getInventory().sector
+  const alreadyStamped = Boolean(nebulaId && p.stamps?.[nebulaId])
   const baseStars = extra?.stars ?? (score > 8000 ? 3 : score > 3000 ? 2 : 1)
   const stars = Math.min(3, Math.max(prev?.stars ?? 0, baseStars))
   const challenges = [...new Set([...(prev?.challenges ?? []), ...(extra?.challenges ?? [])])]
@@ -164,13 +207,89 @@ export function recordWin(
   if (extra?.badge) {
     p.badges = [...new Set([...(p.badges ?? []), extra.badge])]
   }
+  const stampedNow = Boolean(nebulaId && nebulaAllStarred(nebulaId, p) && !alreadyStamped)
+  if (stampedNow && nebulaId) {
+    p.stamps = { ...(p.stamps ?? {}), [nebulaId]: true }
+  }
   write(KEY, p)
   const inv = getInventory()
   inv.coins += coins
   if (extra?.stardust) inv.stardust += extra.stardust
   inv.sector = Math.max(inv.sector, level?.sectorId ?? Math.ceil(levelId / 50))
   write(INV, inv)
+  if (nebulaId && !nebulaWasDone && nebulaRequiredComplete(nebulaId, p)) grantLives(1)
+  if (getInventory().sector > sectorBefore) grantLives(1)
+  if (stampedNow) {
+    grantItem('solar-flare', 2)
+    grantItem('hammer', 1)
+  }
   return extra?.badge ?? BADGES.find((b) => b.at === levelId)?.name ?? null
+}
+
+export function nebulaAllStarred(nebulaId: string, progress = getProgress()): boolean {
+  const ids = nebulaLevelIds(nebulaId)
+  if (!ids.length) return false
+  return ids.every((id) => (progress.levels[id]?.stars ?? 0) >= 3)
+}
+
+export function grantLives(n = 1): boolean {
+  const inv = getInventory()
+  if (inv.lives >= LIFE_MAX) return false
+  inv.lives = Math.min(LIFE_MAX, inv.lives + n)
+  write(INV, inv)
+  return true
+}
+
+export function grantCoins(n: number) {
+  const inv = getInventory()
+  inv.coins += n
+  write(INV, inv)
+}
+
+export function spendStardust(n: number): { error?: string } {
+  const inv = getInventory()
+  if (inv.stardust < n) return { error: 'Not enough stardust' }
+  inv.stardust -= n
+  write(INV, inv)
+  return {}
+}
+
+export function spendLife(): boolean {
+  const inv = getInventory()
+  if (inv.lives <= 0) return false
+  inv.lives -= 1
+  write(INV, inv)
+  return true
+}
+
+export function spendSpareLife(): boolean {
+  if (getInventory().lives <= 1) return false
+  return spendLife()
+}
+
+export function spendCoins(n: number): boolean {
+  const inv = getInventory()
+  if (inv.coins < n) return false
+  inv.coins -= n
+  write(INV, inv)
+  return true
+}
+
+export function bumpCometStreak(peak: number, won: boolean) {
+  const p = getProgress()
+  if (won && peak >= 3) {
+    p.cometStreak = (p.cometStreak ?? 0) + 1
+    p.cometBest = Math.max(p.cometBest ?? 0, p.cometStreak)
+  } else if (!won) {
+    p.cometStreak = 0
+  }
+  write(KEY, p)
+}
+
+export function recordDailyScore(day: string, score: number) {
+  const p = getProgress()
+  p.dailyBest = { ...(p.dailyBest ?? {}), [day]: Math.max(p.dailyBest?.[day] ?? 0, score) }
+  write(KEY, p)
 }
 
 export function completedChallenges(levelId: number): string[] {
@@ -208,12 +327,18 @@ export function skipNextLevel(): { error?: string; levelId?: number } {
 
 export function purchase(item: StoreItem): { error?: string } {
   const inv = getInventory()
-  if (inv.sector < item.minSector) return { error: 'Sector gated' }
-  if (item.currency === 'coins' && inv.coins < item.price) return { error: 'Need more coins' }
-  if (item.currency === 'stardust' && inv.stardust < item.price) return { error: 'Need more stardust' }
-  if (item.currency === 'coins') inv.coins -= item.price
-  else inv.stardust -= item.price
-  if (item.kind === 'lives') inv.lives += item.qty ?? 5
+  const admin = isAdminPilot()
+  if (!admin && inv.sector < item.minSector) return { error: 'Sector gated' }
+  if (!admin && item.currency === 'coins' && inv.coins < item.price) return { error: 'Need more coins' }
+  if (!admin && item.currency === 'stardust' && inv.stardust < item.price) return { error: 'Need more stardust' }
+  if (!admin) {
+    if (item.currency === 'coins') inv.coins -= item.price
+    else inv.stardust -= item.price
+  }
+  if (item.kind === 'lives') {
+    if (inv.lives >= LIFE_MAX) return { error: 'Pulse well is full (5)' }
+    inv.lives = Math.min(LIFE_MAX, inv.lives + (item.qty ?? 5))
+  }
   else if (item.kind === 'skin' && item.payload) inv.skin = item.payload
   else if (item.grants) {
     for (const [id, n] of Object.entries(item.grants)) {

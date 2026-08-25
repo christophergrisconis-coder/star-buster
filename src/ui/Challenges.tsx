@@ -112,7 +112,7 @@ export function ChallengeBoard({ nebulaId }: { nebulaId?: string }) {
                         void navigate({
                           to: '/play/$levelId',
                           params: { levelId: String(active.nebulaId === selected.id ? active.levelId : CAMPAIGN.levels.find((l) => l.nebulaId === selected.id)!.id) },
-                          search: { challenge: c.id },
+                          search: { challenge: c.id, seed: undefined },
                         })
                       })
                     }}

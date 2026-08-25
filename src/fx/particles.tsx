@@ -114,3 +114,75 @@ export function BurstLayer({
     />
   )
 }
+
+export function GravityTrails({
+  moves,
+  width,
+  height = 9,
+  trailKey,
+}: {
+  moves: Array<{ from: number; to: number }>
+  width: number
+  height?: number
+  trailKey: number
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const rafRef = useRef(0)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas || trailKey === 0 || moves.length === 0) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    type Dot = { x: number; y: number; vy: number; life: number; size: number; color: string }
+    const dots: Dot[] = []
+    const colors = ['#ffd24a55', '#fff5', '#c084fc44']
+    for (const m of moves.slice(0, 12)) {
+      const rows = Math.abs(Math.floor(m.to / width) - Math.floor(m.from / width))
+      if (rows < 2) continue
+      const cx = ((m.from % width) + 0.5) / width
+      const cy = (Math.floor(m.from / width) + 0.5) / height
+      for (let n = 0; n < Math.min(rows, 4); n++) {
+        dots.push({
+          x: cx + (Math.random() - 0.5) * 0.02,
+          y: cy + n * (1 / height) * 0.5,
+          vy: 0.3 + Math.random() * 0.2,
+          life: 1,
+          size: 1.5 + Math.random(),
+          color: colors[n % colors.length]!,
+        })
+      }
+    }
+    const started = performance.now()
+    const tick = (now: number) => {
+      const w = canvas.clientWidth
+      const h = canvas.clientHeight
+      if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h }
+      ctx.clearRect(0, 0, w, h)
+      const dt = 0.016
+      const alive: Dot[] = []
+      for (const d of dots) {
+        d.y += d.vy * dt / height
+        d.life -= dt * 2.5
+        if (d.life <= 0) continue
+        alive.push(d)
+        ctx.globalAlpha = d.life * 0.6
+        ctx.fillStyle = d.color
+        ctx.beginPath()
+        ctx.arc(d.x * w, d.y * h, d.size, 0, Math.PI * 2)
+        ctx.fill()
+      }
+      dots.length = 0
+      dots.push(...alive)
+      if (alive.length && now - started < 400) rafRef.current = requestAnimationFrame(tick)
+      else ctx.clearRect(0, 0, w, h)
+    }
+    rafRef.current = requestAnimationFrame(tick)
+    return () => { cancelAnimationFrame(rafRef.current); dots.length = 0 }
+  }, [trailKey, moves, width, height])
+
+  return (
+    <canvas ref={canvasRef} className="pointer-events-none absolute inset-0 z-19" aria-hidden />
+  )
+}

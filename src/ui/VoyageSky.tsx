@@ -43,7 +43,15 @@ export function VoyageSky({ travelRef }: { travelRef: RefObject<number> }) {
         tint: Math.random(),
         flare: Math.random() > 0.91,
       }))
-      const hues = [262, 210, 18, 328, 175, 42]
+      const month = new Date().getUTCMonth()
+      const hues =
+        month === 11 || month === 0
+          ? [210, 198, 250, 18, 42, 175]
+          : month >= 2 && month <= 4
+            ? [140, 175, 42, 210, 18, 328]
+            : month >= 8 && month <= 10
+              ? [28, 18, 42, 262, 328, 210]
+              : [262, 210, 18, 328, 175, 42]
       clouds = Array.from({ length: 8 }, (_, i) => ({
         x: Math.random(),
         y: Math.random(),

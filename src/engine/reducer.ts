@@ -17,7 +17,7 @@ import {
   objectiveComplete,
   syncJellyObjective,
 } from './objectives'
-import { comboForSpecials, SUN_BLAST_RADIUS, TWIN_SUN_BLAST_RADIUS, wrappedBlast } from './specials'
+import { colorIndices, comboForSpecials, rowColCross, stripedLine, SUN_BLAST_RADIUS, TWIN_SUN_BLAST_RADIUS, wrappedBlast } from './specials'
 import { rollKitDrop } from '~/data/kit'
 import { cometTailMultiplier, sectorDifficulty } from '~/data/difficulty'
 import {
@@ -68,8 +68,26 @@ function detonateQueue(
     const cell = cells[i]!
     if (cell.special !== 'none' && !detonatedSpecial.has(i)) {
       detonatedSpecial.add(i)
-      for (const d of wrappedBlast(i, SUN_BLAST_RADIUS, width, height)) {
-        if (!destroyed.has(d)) queue.push(d)
+      if (cell.special === 'striped-h' || cell.special === 'striped-v') {
+        const axis = cell.special === 'striped-h' ? 'h' : 'v'
+        for (const d of stripedLine(cells, i, axis, width, height).destroyed) {
+          if (!destroyed.has(d)) queue.push(d)
+        }
+      } else if (cell.special === 'color-bomb') {
+        const color = cell.color
+        if (color) {
+          for (const d of colorIndices(cells, color)) {
+            if (!destroyed.has(d)) queue.push(d)
+          }
+        } else {
+          for (const d of wrappedBlast(i, SUN_BLAST_RADIUS, width, height)) {
+            if (!destroyed.has(d)) queue.push(d)
+          }
+        }
+      } else {
+        for (const d of wrappedBlast(i, SUN_BLAST_RADIUS, width, height)) {
+          if (!destroyed.has(d)) queue.push(d)
+        }
       }
     }
   }
@@ -104,11 +122,11 @@ function applyDestroy(state: GameState, destroyed: Set<number>, spawnedAt: Map<n
 
   for (const [index, special] of spawnedAt) {
     const jelly = cells[index]!.jelly
-    const color = state.cells[index]!.color
+    const color = special === 'color-bomb' ? null : state.cells[index]!.color
     cells[index] = {
       ...emptyCell(jelly),
       color,
-      special: special === 'none' ? 'none' : 'wrapped',
+      special,
     }
   }
 
@@ -292,12 +310,67 @@ function applySpecialCombo(state: GameState, a: number, b: number): GameState | 
   if (!combo) return null
 
   const cells = state.cells.map(cloneCell)
-  let destroyed = wrappedBlast(b, TWIN_SUN_BLAST_RADIUS, state.width, state.height)
-  destroyed.add(a)
-  destroyed.add(b)
+  let seeds: Set<number>
 
-  const detonated = detonateQueue(cells, destroyed, state.width, state.height)
-  destroyed = detonated.destroyed
+  switch (combo.type) {
+    case 'striped-cross': {
+      seeds = rowColCross(b, state.width, state.height)
+      seeds.add(a)
+      break
+    }
+    case 'striped-wide': {
+      const { x, y } = { x: b % state.width, y: Math.floor(b / state.width) }
+      seeds = new Set<number>()
+      for (let row = Math.max(0, y - 1); row <= Math.min(state.height - 1, y + 1); row++)
+        for (let col = 0; col < state.width; col++) seeds.add(col + row * state.width)
+      for (let col = Math.max(0, x - 1); col <= Math.min(state.width - 1, x + 1); col++)
+        for (let row = 0; row < state.height; row++) seeds.add(col + row * state.width)
+      seeds.add(a)
+      break
+    }
+    case 'wrapped-5': {
+      seeds = wrappedBlast(b, TWIN_SUN_BLAST_RADIUS, state.width, state.height)
+      seeds.add(a)
+      break
+    }
+    case 'color-bomb-striped': {
+      const bombIdx = ca.special === 'color-bomb' ? a : b
+      const otherIdx = bombIdx === a ? b : a
+      const targetColor = cells[otherIdx]!.color
+      seeds = new Set<number>([a, b])
+      if (targetColor) {
+        for (const i of colorIndices(cells, targetColor)) {
+          cells[i] = { ...cells[i]!, special: 'striped-h' }
+          seeds.add(i)
+        }
+      }
+      break
+    }
+    case 'color-bomb-wrapped': {
+      const bombIdx = ca.special === 'color-bomb' ? a : b
+      const otherIdx = bombIdx === a ? b : a
+      const targetColor = cells[otherIdx]!.color
+      seeds = new Set<number>([a, b])
+      if (targetColor) {
+        for (const i of colorIndices(cells, targetColor)) {
+          cells[i] = { ...cells[i]!, special: 'wrapped' }
+          seeds.add(i)
+        }
+      }
+      break
+    }
+    case 'color-bomb-double': {
+      seeds = new Set<number>()
+      for (let i = 0; i < cells.length; i++) seeds.add(i)
+      break
+    }
+    default:
+      seeds = wrappedBlast(b, TWIN_SUN_BLAST_RADIUS, state.width, state.height)
+      seeds.add(a)
+  }
+
+  const detonated = detonateQueue(cells, seeds, state.width, state.height)
+  const destroyed = detonated.destroyed
   let next: GameState = { ...state, cells }
   next = applyDestroy(next, destroyed, new Map())
   const grav = applyGravity(next.cells, next.width, next.height)
@@ -467,6 +540,16 @@ export function createGame(config: LevelConfig): GameState {
 }
 
 export function reduce(state: GameState, action: EngineAction): GameState {
+  if (action.type === 'resume') {
+    if (state.status !== 'lost') return state
+    return {
+      ...state,
+      status: 'playing',
+      movesLeft: state.movesLeft + (action.extraMoves ?? 0),
+      timeLeft: Math.max(1, state.timeLeft) + (action.extraTime ?? 0),
+      events: [],
+    }
+  }
   if (state.status === 'won' || state.status === 'lost') return state
   if (state.status === 'finale' && action.type !== 'tick-finale') return state
 
@@ -508,7 +591,7 @@ export function reduce(state: GameState, action: EngineAction): GameState {
     const cells = current.cells.map(cloneCell)
     cells[action.index] = {
       ...cells[action.index]!,
-      special: action.special === 'none' ? 'none' : 'wrapped',
+      special: action.special,
     }
     return { ...current, cells }
   }
@@ -528,8 +611,24 @@ export function reduce(state: GameState, action: EngineAction): GameState {
     const i = action.index
     const cell = current.cells[i]!
     if (cell.frosting === 0 && isHole(cell) && !cell.chocolate) return current
+    if (action.type === 'hammer' && cell.special !== 'none' && isSwappable(cell)) {
+      current = blastAndRefill(current, [i], 1)
+      current = rewardForMove(current)
+      return finishMove(current, false)
+    }
     const destroyed =
       action.type === 'well' ? wrappedBlast(i, 1, current.width, current.height) : new Set([i])
+    if (action.type === 'well') {
+      const seeds = [...destroyed].filter((j) => {
+        const hit = current.cells[j]
+        return Boolean(hit && hit.special !== 'none' && isSwappable(hit))
+      })
+      if (seeds.length) {
+        current = blastAndRefill(current, seeds, 1)
+        current = rewardForMove(current)
+        return finishMove(current, false)
+      }
+    }
     current = applyDestroy(current, destroyed, new Map())
     const grav = applyGravity(current.cells, current.width, current.height)
     const filled = refillBoard({ ...current, cells: grav.cells })

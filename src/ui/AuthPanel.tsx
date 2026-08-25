@@ -10,6 +10,7 @@ import {
   type AuthProviderId,
 } from '~/lib/authPrefs'
 import { mergeGuestIntoUser } from '~/lib/progress'
+import { signInOwner } from '~/lib/owner'
 
 type OAuthId = Exclude<AuthProviderId, 'email'>
 const OAUTH: OAuthId[] = ['google', 'apple', 'azure']
@@ -132,6 +133,11 @@ export function AuthPanel({ heading = 'Docking Bay' }: { heading?: string }) {
           onSubmit={(e) => {
             e.preventDefault()
             void run(async () => {
+              if (signInOwner(email, password).error == null) {
+                setLastProvider('email')
+                finish()
+                return
+              }
               const sb = createBrowserSupabase()
               if (!sb) throw new Error('Supabase env vars are missing.')
               setLastProvider('email')
@@ -171,6 +177,28 @@ export function AuthPanel({ heading = 'Docking Bay' }: { heading?: string }) {
         </form>
       </details>
       {error ? <p className="text-[12px] text-red-300">{error}</p> : null}
+      <details className="rounded-xl border border-gold/20 bg-black/20 p-3">
+        <summary className="cursor-pointer text-[12px] text-gold">Admin dock</summary>
+        <form
+          className="mt-3 space-y-2"
+          onSubmit={(e) => {
+            e.preventDefault()
+            const fd = new FormData(e.currentTarget)
+            const code = String(fd.get('code') ?? '')
+            void import('~/lib/progress').then(({ loginAdminDock }) => {
+              const res = loginAdminDock(code)
+              if (res.error) setError(res.error)
+              else finish()
+            })
+          }}
+        >
+          <p className="text-[12px] text-white/55">Local admin code. Cloud admins use a signed-in profile flag.</p>
+          <input name="code" type="password" className="w-full rounded-xl border border-white/15 bg-black/30 px-3 py-2 text-[14px]" placeholder="Dock code" />
+          <button type="submit" className="w-full rounded-full bg-gold py-2 text-[13px] font-semibold text-void">
+            Open admin
+          </button>
+        </form>
+      </details>
     </div>
   )
 }

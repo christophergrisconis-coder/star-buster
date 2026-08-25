@@ -31,6 +31,7 @@ export function HUD({
   hintBusy,
   coachLine,
   coachError,
+  hintCost = 0,
   cometRemainMs,
   cometDurationMs,
   challenges,
@@ -43,6 +44,7 @@ export function HUD({
   hintBusy: boolean
   coachLine: string | null
   coachError: string | null
+  hintCost?: number
   cometRemainMs: number
   cometDurationMs: number
   challenges: Challenge[]
@@ -138,7 +140,7 @@ export function HUD({
         disabled={hintBusy || state.status !== 'playing'}
         className="w-full rounded-full bg-magenta/90 py-2 text-[13px] font-semibold text-white disabled:opacity-40"
       >
-        {hintBusy ? 'Scanning orbits…' : 'AI Hint Coach'}
+        {hintBusy ? 'Scanning orbits…' : hintCost ? `Hint · ${hintCost} coins` : 'AI Hint Coach · first free'}
       </button>
       {coachLine ? <p className="text-[13px] italic text-gold/90">“{coachLine}”</p> : null}
       {coachError ? <p className="text-[12px] text-red-300">Coach offline: {coachError}</p> : null}

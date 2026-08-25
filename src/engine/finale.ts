@@ -1,8 +1,10 @@
 import { rngInt } from './prng'
-import { occupies, type GameState } from './types'
+import { occupies, type GameState, type SpecialKind } from './types'
 
 /** Cap the starburst so leftover moves do not wipe the board in one clip. */
 export const FINALE_SUN_CAP = 6
+
+const FINALE_SPECIALS: SpecialKind[] = ['wrapped', 'striped-h', 'striped-v', 'wrapped', 'striped-h', 'striped-v']
 
 export function convertMovesToSpecials(state: GameState): GameState {
   let rng = state.rngState
@@ -18,13 +20,15 @@ export function convertMovesToSpecials(state: GameState): GameState {
     }
   }
 
+  let idx = 0
   while (remaining > 0 && candidates.length > 0) {
     const pick = rngInt(rng, candidates.length)
     rng = pick.state
     const index = candidates.splice(pick.n, 1)[0]!
-    cells[index] = { ...cells[index]!, special: 'wrapped' }
+    cells[index] = { ...cells[index]!, special: FINALE_SPECIALS[idx % FINALE_SPECIALS.length]! }
     converted.push(index)
     remaining -= 1
+    idx += 1
   }
 
   return {

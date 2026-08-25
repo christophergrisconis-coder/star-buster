@@ -14,6 +14,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ChallengesRouteImport } from './routes/challenges'
 import { Route as FriendsRouteImport } from './routes/friends'
 import { Route as LeaderboardRouteImport } from './routes/leaderboard'
+import { Route as LuckyDrawRouteImport } from './routes/lucky-draw'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as StoreRouteImport } from './routes/store'
 import { Route as ChallengesIndexRouteImport } from './routes/challenges.index'
@@ -45,6 +46,11 @@ const FriendsRoute = FriendsRouteImport.update({
 const LeaderboardRoute = LeaderboardRouteImport.update({
   id: '/leaderboard',
   path: '/leaderboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LuckyDrawRoute = LuckyDrawRouteImport.update({
+  id: '/lucky-draw',
+  path: '/lucky-draw',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProfileRoute = ProfileRouteImport.update({
@@ -89,6 +95,7 @@ export interface FileRoutesByFullPath {
   '/challenges': typeof ChallengesRouteWithChildren
   '/friends': typeof FriendsRoute
   '/leaderboard': typeof LeaderboardRoute
+  '/lucky-draw': typeof LuckyDrawRoute
   '/profile': typeof ProfileRoute
   '/store': typeof StoreRoute
   '/challenges/$nebulaId': typeof ChallengesNebulaIdRoute
@@ -102,6 +109,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/friends': typeof FriendsRoute
   '/leaderboard': typeof LeaderboardRoute
+  '/lucky-draw': typeof LuckyDrawRoute
   '/profile': typeof ProfileRoute
   '/store': typeof StoreRoute
   '/challenges/$nebulaId': typeof ChallengesNebulaIdRoute
@@ -117,6 +125,7 @@ export interface FileRoutesById {
   '/challenges': typeof ChallengesRouteWithChildren
   '/friends': typeof FriendsRoute
   '/leaderboard': typeof LeaderboardRoute
+  '/lucky-draw': typeof LuckyDrawRoute
   '/profile': typeof ProfileRoute
   '/store': typeof StoreRoute
   '/challenges/$nebulaId': typeof ChallengesNebulaIdRoute
@@ -133,6 +142,7 @@ export interface FileRouteTypes {
     | '/challenges'
     | '/friends'
     | '/leaderboard'
+    | '/lucky-draw'
     | '/profile'
     | '/store'
     | '/challenges/$nebulaId'
@@ -146,6 +156,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/friends'
     | '/leaderboard'
+    | '/lucky-draw'
     | '/profile'
     | '/store'
     | '/challenges/$nebulaId'
@@ -160,6 +171,7 @@ export interface FileRouteTypes {
     | '/challenges'
     | '/friends'
     | '/leaderboard'
+    | '/lucky-draw'
     | '/profile'
     | '/store'
     | '/challenges/$nebulaId'
@@ -175,6 +187,7 @@ export interface RootRouteChildren {
   ChallengesRoute: typeof ChallengesRouteWithChildren
   FriendsRoute: typeof FriendsRoute
   LeaderboardRoute: typeof LeaderboardRoute
+  LuckyDrawRoute: typeof LuckyDrawRoute
   ProfileRoute: typeof ProfileRoute
   StoreRoute: typeof StoreRoute
   NebulaNebulaIdRoute: typeof NebulaNebulaIdRoute
@@ -217,6 +230,13 @@ declare module '@tanstack/react-router' {
       path: '/leaderboard'
       fullPath: '/leaderboard'
       preLoaderRoute: typeof LeaderboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lucky-draw': {
+      id: '/lucky-draw'
+      path: '/lucky-draw'
+      fullPath: '/lucky-draw'
+      preLoaderRoute: typeof LuckyDrawRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/profile': {
@@ -291,6 +311,7 @@ const rootRouteChildren: RootRouteChildren = {
   ChallengesRoute: ChallengesRouteWithChildren,
   FriendsRoute: FriendsRoute,
   LeaderboardRoute: LeaderboardRoute,
+  LuckyDrawRoute: LuckyDrawRoute,
   ProfileRoute: ProfileRoute,
   StoreRoute: StoreRoute,
   NebulaNebulaIdRoute: NebulaNebulaIdRoute,

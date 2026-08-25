@@ -1,4 +1,5 @@
 import { useId } from 'react'
+import { SKIN_FILTERS } from '~/data/store'
 import type { Cell, StarColor } from '~/engine/types'
 import { STAR5, sunRayPath } from './starGeometry'
 
@@ -134,6 +135,37 @@ export function StarFace({ kind, brow }: { kind: FaceKind; brow: string }) {
 
 function SpecialMarks({ special }: { special: Cell['special'] }) {
   if (special === 'none') return null
+
+  if (special === 'striped-h') {
+    return (
+      <>
+        <line x1="8" y1="32" x2="56" y2="32" stroke="#fff" strokeWidth="3" opacity="0.9" strokeLinecap="round" />
+        <line x1="10" y1="28" x2="54" y2="28" stroke="#fff" strokeWidth="1.2" opacity="0.4" strokeLinecap="round" />
+        <line x1="10" y1="36" x2="54" y2="36" stroke="#fff" strokeWidth="1.2" opacity="0.4" strokeLinecap="round" />
+      </>
+    )
+  }
+
+  if (special === 'striped-v') {
+    return (
+      <>
+        <line x1="32" y1="8" x2="32" y2="56" stroke="#fff" strokeWidth="3" opacity="0.9" strokeLinecap="round" />
+        <line x1="28" y1="10" x2="28" y2="54" stroke="#fff" strokeWidth="1.2" opacity="0.4" strokeLinecap="round" />
+        <line x1="36" y1="10" x2="36" y2="54" stroke="#fff" strokeWidth="1.2" opacity="0.4" strokeLinecap="round" />
+      </>
+    )
+  }
+
+  if (special === 'color-bomb') {
+    return (
+      <>
+        <circle cx="32" cy="32" r="20" fill="none" stroke="#ffd24a" strokeWidth="2" opacity="0.85" strokeDasharray="4 3" />
+        <circle cx="32" cy="32" r="16" fill="none" stroke="#c084fc" strokeWidth="1.5" opacity="0.65" strokeDasharray="3 4" />
+        <circle cx="32" cy="32" r="12" fill="none" stroke="#22d3ee" strokeWidth="1.2" opacity="0.55" strokeDasharray="2 4" />
+      </>
+    )
+  }
+
   return (
     <>
       <circle cx="32" cy="32" r="21" fill="none" stroke="#ff2bd6" strokeWidth="2.4" opacity="0.95" />
@@ -283,7 +315,10 @@ export function NovaBomb({ id }: { id: string }) {
 }
 
 function specialMotion(special: Cell['special']) {
-  return special === 'none' ? '' : 'star-wrapped'
+  if (special === 'none') return ''
+  if (special === 'striped-h' || special === 'striped-v') return 'star-striped'
+  if (special === 'color-bomb') return 'star-color-bomb'
+  return 'star-wrapped'
 }
 
 export function StarTile({
@@ -309,8 +344,9 @@ export function StarTile({
       : { a: '#fff', b: '#888', c: '#333', glow: '#fff', brow: '#1a0c08' }
   const motion = exploding ? 'star-explode' : spawning ? 'star-spawn' : 'star-idle'
   const powerPlay = cell.special !== 'none' && !cell.ingredient
+  const isColorBomb = cell.special === 'color-bomb'
   const showPiece =
-    (cell.color || powerPlay || cell.ingredient) &&
+    (cell.color || powerPlay || cell.ingredient || isColorBomb) &&
     !cell.frosting &&
     !cell.chocolate &&
     !cell.swirl
@@ -321,8 +357,7 @@ export function StarTile({
       style={{
         ['--star-glow' as string]: fill.glow,
         ['--blink-delay' as string]: `${(delay ?? 0) + 280}ms`,
-        filter:
-          skin === 'aurora' ? 'hue-rotate(28deg)' : skin === 'void' ? 'saturate(1.4)' : undefined,
+        filter: skin ? SKIN_FILTERS[skin] : undefined,
       }}
     >
       {cell.jelly > 0 ? <div className="jelly-well jelly-well--tile" /> : null}
@@ -353,7 +388,9 @@ export function StarTile({
           className={`h-full w-full ${motion} ${specialMotion(cell.special)}`}
           style={{ animationDelay: `${delay ?? 0}ms` }}
         >
-          {powerPlay ? (
+          {isColorBomb ? (
+            <NovaBomb id={uid} />
+          ) : powerPlay ? (
             <SunCore id={uid} fill={fill} special={cell.special} powerPlay />
           ) : (
             <div className="star-3d">

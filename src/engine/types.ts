@@ -119,6 +119,7 @@ export interface LevelConfig {
   ingredients: number[]
   exits: number[]
   timeLimit: number
+  boss?: boolean
 }
 
 export interface GameState {
@@ -159,6 +160,7 @@ export type EngineAction =
   | { type: 'tick-finale' }
   | { type: 'decay-comet-tail' }
   | { type: 'tick-clock' }
+  | { type: 'resume'; extraMoves?: number; extraTime?: number }
 
 export function idx(x: number, y: number, width = BOARD_WIDTH): number {
   return x + y * width

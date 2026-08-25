@@ -136,7 +136,8 @@ function applyDestroyVisual(cells: Cell[], wave: WaveEvent): Cell[] {
   }
   for (const { index, special } of wave.spawnedSpecials) {
     const color = cells[index]!.color
-    next[index] = { ...wipeStar(next[index]!), color, special: special === 'none' ? 'none' : 'wrapped' }
+    const spawnColor = special === 'color-bomb' ? null : color
+    next[index] = { ...wipeStar(next[index]!), color: spawnColor, special }
   }
   return next
 }
@@ -256,6 +257,8 @@ export function Board({
   const [trails, setTrails] = useState<Array<{ key: number; x: number; y: number }>>([])
   const [sunBursts, setSunBursts] = useState<number[]>([])
   const [boardFx, setBoardFx] = useState('')
+  const [lineClear, setLineClear] = useState<{ key: number; axis: 'h' | 'v'; pos: number } | null>(null)
+  const [colorBombWave, setColorBombWave] = useState<number[]>([])
   const onWaveRef = useRef(onWave)
   onWaveRef.current = onWave
   const onBusyRef = useRef(onBusyChange)
@@ -286,6 +289,8 @@ export function Board({
     setTrails([])
     setSunBursts([])
     setBoardFx('')
+    setLineClear(null)
+    setColorBombWave([])
     setPieces((prev) => preservePieces(cells, prev))
   }
 
@@ -370,15 +375,46 @@ export function Board({
         if (!live()) return
       }
 
-      for (const wave of waves) {
+      for (const [wi, wave] of waves.entries()) {
         if (!live()) return
+        const lite = waves.length > 5 && wi >= 4
+        const fxDestroyed = lite ? wave.destroyed.slice(0, 8) : wave.destroyed.slice(0, 28)
+        if (lite) {
+          onWaveRef.current?.(wave)
+          cells = applyDestroyVisual(cells, wave)
+          cells = applyGravity(cells, snap.width, snap.height).cells
+          cells = applyRefillVisual(cells, wave)
+          setBoardCells(cells)
+          setPieces(preservePieces(cells, moving))
+          moving = preservePieces(cells, moving)
+          await wait(36)
+          if (!live()) return
+          continue
+        }
         onWaveRef.current?.(wave)
         setWaveCombo(wave.combo)
         setBanner(wave.word ?? (wave.groups >= 2 ? 'NICE' : wave.combo >= 2 ? `COMBO x${wave.combo}` : null))
-        setBoardFx(wave.combo >= 2 || wave.blast !== 'S' ? 'board-shake' : 'board-pulse')
+        const shakeClass = wave.combo >= 5 || wave.blast === 'L' ? 'board-shake-heavy'
+          : wave.combo >= 2 || wave.blast !== 'S' ? 'board-shake' : 'board-pulse'
+        setBoardFx(shakeClass)
+
+        const hasStripedH = wave.spawnedSpecials.some((s) => s.special === 'striped-h')
+        const hasStripedV = wave.spawnedSpecials.some((s) => s.special === 'striped-v')
+        const hasColorBomb = wave.spawnedSpecials.some((s) => s.special === 'color-bomb')
+        if (hasStripedH || hasStripedV) {
+          const origin = wave.spawnedSpecials.find((s) => s.special === 'striped-h' || s.special === 'striped-v')!
+          const pos = hasStripedH
+            ? Math.floor(origin.index / snap.width)
+            : origin.index % snap.width
+          setLineClear({ key: pieceSeq++, axis: hasStripedH ? 'h' : 'v', pos })
+        }
+        if (hasColorBomb) {
+          setColorBombWave(wave.destroyed.slice(0, 20))
+        }
+
         const spawnAt = new Set(wave.spawnedSpecials.map((s) => s.index))
         const exploding = new Set(wave.destroyed)
-        const goldHits = wave.destroyed.filter((i) => cells[i]?.color === 'gold')
+        const goldHits = wave.destroyed.filter((i) => cells[i]?.color === 'gold').slice(0, 6)
         moving = moving.map((p) => ({
           ...p,
           exploding: exploding.has(p.index) && !spawnAt.has(p.index),
@@ -391,8 +427,8 @@ export function Board({
             : p.cell,
         }))
         setPieces(moving)
-        setBurst({ key: pieceSeq++, indices: wave.destroyed, size: wave.blast })
-        setFlashes(wave.destroyed)
+        setBurst({ key: pieceSeq++, indices: fxDestroyed, size: wave.blast })
+        setFlashes(fxDestroyed)
         setSunBursts(goldHits)
         await wait(explodeMs(wave.blast, reduced))
         if (!live()) return
@@ -413,7 +449,7 @@ export function Board({
         setFlashes([])
         setSunBursts([])
         setTrails(
-          wave.gravity.map((m, i) => ({
+          wave.gravity.slice(0, 18).map((m, i) => ({
             key: pieceSeq + i,
             x: m.from % snap.width,
             y: Math.floor(m.from / snap.width),
@@ -706,6 +742,31 @@ export function Board({
             }}
           />
         ))}
+        {lineClear ? (
+          <span
+            key={`lc-${lineClear.key}`}
+            className={`line-clear line-clear-${lineClear.axis}`}
+            style={
+              lineClear.axis === 'h'
+                ? { top: `${((lineClear.pos + 0.5) / state.height) * 100}%` }
+                : { left: `${((lineClear.pos + 0.5) / state.width) * 100}%` }
+            }
+          />
+        ) : null}
+        {colorBombWave.map((i) => {
+          const x = i % state.width
+          const y = Math.floor(i / state.width)
+          return (
+            <span
+              key={`cb-${i}-${burst?.key ?? 0}`}
+              className="color-bomb-ripple"
+              style={{
+                left: `${((x + 0.5) / state.width) * 100}%`,
+                top: `${((y + 0.5) / state.height) * 100}%`,
+              }}
+            />
+          )
+        })}
         {pieces.map((p) => {
           const visible = occupies(p.cell) || p.cell.frosting > 0 || p.cell.chocolate || p.exploding
           if (!visible) return null

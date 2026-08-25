@@ -113,10 +113,31 @@ export function isSunSpecial(special: SpecialKind): boolean {
   return special !== 'none'
 }
 
+export type SpecialComboType =
+  | 'striped-cross'
+  | 'striped-wide'
+  | 'wrapped-5'
+  | 'color-bomb-striped'
+  | 'color-bomb-wrapped'
+  | 'color-bomb-double'
+
+function isStriped(s: SpecialKind): boolean {
+  return s === 'striped-h' || s === 'striped-v'
+}
+
 export function comboForSpecials(
   a: SpecialKind,
   b: SpecialKind,
-): { type: 'wrapped-5' } | null {
-  if (isSunSpecial(a) && isSunSpecial(b)) return { type: 'wrapped-5' }
-  return null
+): { type: SpecialComboType } | null {
+  if (!isSunSpecial(a) || !isSunSpecial(b)) return null
+  if (a === 'color-bomb' && b === 'color-bomb') return { type: 'color-bomb-double' }
+  if (a === 'color-bomb' && b === 'wrapped') return { type: 'color-bomb-wrapped' }
+  if (b === 'color-bomb' && a === 'wrapped') return { type: 'color-bomb-wrapped' }
+  if (a === 'color-bomb' && isStriped(b)) return { type: 'color-bomb-striped' }
+  if (b === 'color-bomb' && isStriped(a)) return { type: 'color-bomb-striped' }
+  if (a === 'color-bomb' || b === 'color-bomb') return { type: 'color-bomb-striped' }
+  if (isStriped(a) && isStriped(b)) return { type: 'striped-cross' }
+  if ((isStriped(a) && b === 'wrapped') || (isStriped(b) && a === 'wrapped')) return { type: 'striped-wide' }
+  if (a === 'wrapped' && b === 'wrapped') return { type: 'wrapped-5' }
+  return { type: 'wrapped-5' }
 }

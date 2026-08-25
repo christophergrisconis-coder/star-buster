@@ -87,7 +87,6 @@ function collectSquares(
   cells: Cell[],
   width: number,
   height: number,
-  origins?: Set<number>,
 ): Run[] {
   const runs: Run[] = []
   for (let y = 0; y < height - 1; y++) {
@@ -104,12 +103,7 @@ function collectSquares(
         byColor.set(color, list)
       }
       for (const [color, indices] of byColor) {
-        // A full 2×2 always bursts. An L of three only counts on the swipe that made it —
-        // otherwise gravity keeps completing new corners and one play never settles.
-        if (indices.length >= 4) runs.push({ indices, color, axis: 'h' })
-        else if (indices.length >= 3 && origins && indices.some((i) => origins.has(i))) {
-          runs.push({ indices, color, axis: 'h' })
-        }
+        if (indices.length >= 3) runs.push({ indices, color, axis: 'h' })
       }
     }
   }
@@ -121,16 +115,38 @@ function classify(
   color: StarColor,
   hMax: number,
   vMax: number,
+  hRuns: Run[],
+  vRuns: Run[],
   preferredOrigin?: MatchOrigin,
 ): MatchGroup {
   let kind: MatchGroup['kind'] = 'none'
-  if (hMax >= 4 || vMax >= 4 || (hMax >= 3 && vMax >= 3) || indices.length >= 4) kind = 'wrapped'
-  else kind = 'none'
+
+  if (hMax >= 5 || vMax >= 5) {
+    kind = 'color-bomb'
+  } else if (hMax >= 3 && vMax >= 3) {
+    kind = 'wrapped'
+  } else if (hMax >= 4) {
+    kind = 'striped-v'
+  } else if (vMax >= 4) {
+    kind = 'striped-h'
+  } else if (indices.length >= 4) {
+    kind = 'wrapped'
+  }
 
   const origins = originSet(preferredOrigin)
-  const origin = origins
-    ? (indices.find((i) => origins.has(i)) ?? indices[Math.floor(indices.length / 2)]!)
-    : indices[Math.floor(indices.length / 2)]!
+  let origin: number
+
+  if (origins) {
+    origin = indices.find((i) => origins.has(i)) ?? indices[Math.floor(indices.length / 2)]!
+  } else if (kind === 'striped-v' && hRuns.length) {
+    const run = hRuns.reduce((a, b) => (b.indices.length > a.indices.length ? b : a))
+    origin = run.indices[Math.floor(run.indices.length / 2)]!
+  } else if (kind === 'striped-h' && vRuns.length) {
+    const run = vRuns.reduce((a, b) => (b.indices.length > a.indices.length ? b : a))
+    origin = run.indices[Math.floor(run.indices.length / 2)]!
+  } else {
+    origin = indices[Math.floor(indices.length / 2)]!
+  }
 
   return { indices, color, kind, origin }
 }
@@ -141,8 +157,7 @@ export function findMatches(
   height = BOARD_HEIGHT,
   preferredOrigin?: MatchOrigin,
 ): MatchGroup[] {
-  const origins = originSet(preferredOrigin)
-  const runs = [...collectRuns(cells, width, height), ...collectSquares(cells, width, height, origins)]
+  const runs = [...collectRuns(cells, width, height), ...collectSquares(cells, width, height)]
   if (runs.length === 0) return []
 
   const groups: MatchGroup[] = []
@@ -184,15 +199,13 @@ export function findMatches(
       }
 
       const involved = colorRuns.filter((r) => r.indices.some((i) => component.includes(i)))
-      const hMax = involved
-        .filter((r) => r.axis === 'h')
-        .reduce((m, r) => Math.max(m, r.indices.length), 0)
-      const vMax = involved
-        .filter((r) => r.axis === 'v')
-        .reduce((m, r) => Math.max(m, r.indices.length), 0)
+      const hRuns = involved.filter((r) => r.axis === 'h')
+      const vRuns = involved.filter((r) => r.axis === 'v')
+      const hMax = hRuns.reduce((m, r) => Math.max(m, r.indices.length), 0)
+      const vMax = vRuns.reduce((m, r) => Math.max(m, r.indices.length), 0)
 
       const unique = [...new Set(involved.flatMap((r) => r.indices))]
-      groups.push(classify(unique, color, hMax, vMax, preferredOrigin))
+      groups.push(classify(unique, color, hMax, vMax, hRuns, vRuns, preferredOrigin))
       for (const i of unique) used.add(i)
     }
   }

@@ -38,6 +38,9 @@ export function useAudio() {
     pop: (combo: number) => synth.pop(combo),
     whoosh: () => synth.whoosh(),
     fanfare: () => synth.fanfare(),
+    stripedClear: () => synth.stripedClear(),
+    colorBombBlast: () => synth.colorBombBlast(),
+    gachaReveal: (rarity: 'common' | 'rare' | 'epic' | 'legendary') => synth.gachaReveal(rarity),
     toggle,
     toggleMute: toggle,
   }

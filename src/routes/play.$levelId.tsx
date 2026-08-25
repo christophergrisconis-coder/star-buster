@@ -10,6 +10,9 @@ import {
   type ChallengeRun,
 } from '~/data/challenges'
 import { cometTailDurationMs } from '~/data/difficulty'
+import { dailyLevel, shareOrbitHref, utcDayKey } from '~/data/daily'
+import { weeklyLevel, currentWeekly, weekKey, WEEKLY_LEVEL_ID } from '~/data/weekly'
+import { CONTINUE_MOVES, HINT_COIN_COST } from '~/data/gifts'
 import { getLevel } from '~/data/levels'
 import { CAMPAIGN, LEVEL_BY_ID } from '~/data/campaign'
 import { createGame, howToClear, reduce } from '~/engine'
@@ -17,6 +20,7 @@ import { isSwappable, type GameState } from '~/engine/types'
 import { ChallengeToast } from '~/fx/comboBanners'
 import { useHintCoach } from '~/hint/useHint'
 import { Board } from '~/ui/Board'
+import { FailSheet } from '~/ui/FailSheet'
 import { HUD } from '~/ui/Hud'
 import { BoosterTray, readKitCounts, type ArmedBooster, type InstantBooster } from '~/ui/BoosterTray'
 import type { ActivePickup } from '~/ui/KitPickup'
@@ -25,8 +29,8 @@ import { AuthPanel } from '~/ui/AuthPanel'
 import { NextOrbit } from '~/ui/NextOrbit'
 import { TutorialCoach } from '~/ui/TutorialCoach'
 import { synth } from '~/audio/synth'
-import { isLevelPlayable } from '~/lib/lock'
 import {
+  bumpCometStreak,
   canPlay,
   completedChallenges,
   consumeAny,
@@ -37,7 +41,10 @@ import {
   getRerollSeed,
   grantItem,
   itemCount,
+  recordDailyScore,
   recordWin,
+  spendCoins,
+  spendLife,
 } from '~/lib/progress'
 import { kitItemIds, kitLabelForItem, slotById } from '~/data/kit'
 import { applyTutorialBoard, LESSONS, TUTORIAL_LEVEL, TUTORIAL_SUN } from '~/data/tutorial'
@@ -46,15 +53,16 @@ import { hasCompletedTutorial, markTutorialComplete } from '~/lib/tutorial'
 export const Route = createFileRoute('/play/$levelId')({
   validateSearch: (raw: Record<string, unknown>) => ({
     challenge: typeof raw.challenge === 'string' ? raw.challenge : undefined,
+    seed: typeof raw.seed === 'string' ? Number(raw.seed) : typeof raw.seed === 'number' ? raw.seed : undefined,
   }),
   beforeLoad: ({ params }) => {
     if (typeof window === 'undefined') return
-    if (params.levelId === 'tutorial') return
+    if (params.levelId === 'tutorial' || params.levelId === 'daily' || params.levelId === 'weekly') return
     if (!hasCompletedTutorial() && params.levelId === '1') {
-      throw redirect({ to: '/play/$levelId', params: { levelId: 'tutorial' }, search: { challenge: undefined } })
+      throw redirect({ to: '/play/$levelId', params: { levelId: 'tutorial' }, search: { challenge: undefined, seed: undefined } })
     }
     const id = Number(params.levelId)
-    if (!isLevelPlayable(id, getProgress())) {
+    if (!canPlay(id)) {
       throw redirect({ to: getProgress().guest ? '/auth' : '/' })
     }
   },
@@ -79,7 +87,9 @@ function PlayPage() {
   const { levelId } = useParams({ from: '/play/$levelId' })
   const search = Route.useSearch()
   const isLesson = levelId === 'tutorial'
-  const id = isLesson ? 0 : Number(levelId)
+  const isDaily = levelId === 'daily'
+  const isWeekly = levelId === 'weekly'
+  const id = isLesson || isDaily || isWeekly ? 0 : Number(levelId)
   const nebulaChallenge = useMemo(
     () =>
       isLesson
@@ -91,10 +101,11 @@ function PlayPage() {
   )
   const level = useMemo(() => {
     if (isLesson) return TUTORIAL_LEVEL
+    if (isDaily) return dailyLevel(utcDayKey(), Number.isFinite(search.seed) ? search.seed : undefined)
     const base = LEVEL_BY_ID[id] ?? getLevel(id)
     if (!base) return undefined
     return nebulaChallenge ? applyChallengeModifiers(base, nebulaChallenge) : base
-  }, [id, nebulaChallenge, isLesson])
+  }, [id, nebulaChallenge, isLesson, isDaily, search.seed])
   const challenges = useMemo(() => (level ? challengesForLevel(level) : []), [level])
   const navigate = useNavigate()
   const [state, setState] = useState<GameState | null>(() => {
@@ -109,7 +120,8 @@ function PlayPage() {
   const [booster, setBooster] = useState<ArmedBooster | null>(null)
   const [boardBusy, setBoardBusy] = useState(false)
   const [cometRemainMs, setCometRemainMs] = useState(0)
-  const [hintUsed, setHintUsed] = useState(false)
+  const [hintCount, setHintCount] = useState(0)
+  const [livesLeft, setLivesLeft] = useState(() => (typeof window === 'undefined' ? 5 : getInventory().lives))
   const [peakTail, setPeakTail] = useState(0)
   const [sawSpread, setSawSpread] = useState(false)
   const [sawSpecial, setSawSpecial] = useState(false)
@@ -137,7 +149,7 @@ function PlayPage() {
 
   const resetRun = (next: GameState) => {
     awardedRef.current = false
-    setHintUsed(false)
+    setHintCount(0)
     setPeakTail(0)
     setSawSpread(false)
     setSawSpecial(false)
@@ -166,7 +178,7 @@ function PlayPage() {
 
   const skipSchool = () => {
     markTutorialComplete()
-    void navigate({ to: '/play/$levelId', params: { levelId: '1' }, search: { challenge: undefined } })
+    void navigate({ to: '/play/$levelId', params: { levelId: '1' }, search: { challenge: undefined, seed: undefined } })
   }
 
   const jumpNextOrbit = () => {
@@ -174,7 +186,11 @@ function PlayPage() {
     jumpedRef.current = true
     if (isLesson) {
       markTutorialComplete()
-      void navigate({ to: '/play/$levelId', params: { levelId: '1' }, search: { challenge: undefined } })
+      void navigate({ to: '/play/$levelId', params: { levelId: '1' }, search: { challenge: undefined, seed: undefined } })
+      return
+    }
+    if (isDaily) {
+      void navigate({ to: '/leaderboard' })
       return
     }
     if (id >= 250) {
@@ -189,7 +205,7 @@ function PlayPage() {
       return
     }
     if (canPlay(dest)) {
-      void navigate({ to: '/play/$levelId', params: { levelId: String(dest) }, search: { challenge: undefined } })
+      void navigate({ to: '/play/$levelId', params: { levelId: String(dest) }, search: { challenge: undefined, seed: undefined } })
       return
     }
     void navigate({ to: '/auth' })
@@ -295,7 +311,7 @@ function PlayPage() {
           peakCometTail: Math.max(peakTail, state.cometTail),
           chocolateSpread: sawSpread,
           specialCombo: sawSpecial,
-          hintUsed,
+          hintUsed: hintCount > 0,
           timeLeft: state.timeLeft,
         }
         const cleared = challenges.filter((c) => evaluateChallenge(c, level!, run))
@@ -309,7 +325,8 @@ function PlayPage() {
             extraStars = Math.min(3, Math.max(extraStars, nebulaChallenge.stars))
           }
         }
-        if (!isLesson) {
+        if (!isLesson && !isDaily) {
+          bumpCometStreak(run.peakCometTail, true)
           const nextBadge = recordWin(state.levelId, state.score, state.coinsEarned, {
             stars: extraStars,
             stardust: dust,
@@ -324,6 +341,11 @@ function PlayPage() {
               data: { levelId: state.levelId, bestScore: state.score, stars: extraStars },
             }).catch(() => {})
           })
+        } else if (isDaily) {
+          recordDailyScore(utcDayKey(), state.score)
+          void import('~/server/social').then(({ submitDailyScore }) => {
+            void submitDailyScore({ data: { day: utcDayKey(), score: state.score } }).catch(() => {})
+          })
         } else {
           markTutorialComplete()
           setLessonIndex(LESSONS.length - 1)
@@ -334,7 +356,10 @@ function PlayPage() {
           setToast(bits.join(' · '))
         }
       }
-      if (e.type === 'status' && e.status === 'lost') synth.lose()
+      if (e.type === 'status' && e.status === 'lost') {
+        synth.lose()
+        if (!isLesson) bumpCometStreak(peakTail, false)
+      }
     }
   }, [state?.events])
 
@@ -481,7 +506,14 @@ function PlayPage() {
   return (
     <div className="relative space-y-3 px-3 pt-3">
       <div className="flex items-center justify-between">
-        <button type="button" onClick={() => navigate({ to: '/' })} className="text-[12px] text-white/60">
+        <button
+          type="button"
+          onClick={() => {
+            if (!isLesson && state.status === 'playing') spendLife()
+            void navigate({ to: '/' })
+          }}
+          className="text-[12px] text-white/60"
+        >
           ← Map
         </button>
         <h1 className="display text-[22px] text-gold">{level.name}</h1>
@@ -503,12 +535,18 @@ function PlayPage() {
         state={state}
         level={level}
         onHint={() => {
-          setHintUsed(true)
+          if (hintCount > 0 && !spendCoins(HINT_COIN_COST)) {
+            setDenyNote(`Need ${HINT_COIN_COST} coins for another hint`)
+            window.setTimeout(() => setDenyNote(null), 1600)
+            return
+          }
+          setHintCount((n) => n + 1)
           hint.requestHint(state)
         }}
         hintBusy={hint.busy}
         coachLine={hint.coachLine}
         coachError={hint.coachError}
+        hintCost={hintCount === 0 ? 0 : HINT_COIN_COST}
         cometRemainMs={cometRemainMs}
         cometDurationMs={cometMs}
         challenges={challenges}
@@ -567,7 +605,11 @@ function PlayPage() {
           onWave={(wave) => {
             synth.pop(wave.combo)
             synth.explode(wave.blast)
-            if (wave.word) synth.banner()
+            if (wave.word) synth.banner(wave.word)
+            const hasStriped = wave.spawnedSpecials.some((s) => s.special === 'striped-h' || s.special === 'striped-v')
+            const hasColorBomb = wave.spawnedSpecials.some((s) => s.special === 'color-bomb')
+            if (hasColorBomb) synth.colorBombBlast()
+            else if (hasStriped) synth.stripedClear()
           }}
           pickup={pickup}
           onCollectPickup={() => {
@@ -636,7 +678,7 @@ function PlayPage() {
             <Link
               to="/play/$levelId"
               params={{ levelId: '1' }}
-              search={{ challenge: undefined }}
+              search={{ challenge: undefined, seed: undefined }}
               className="mt-2 inline-block text-magenta"
             >
               Enter Amber Veil 1-1 →
@@ -656,10 +698,13 @@ function PlayPage() {
       ) : null}
       {orbitJump ? (
         <NextOrbit
-          title={isLesson ? 'Flight School clear' : 'Orbit clear'}
+          title={isLesson ? 'Flight School clear' : isDaily ? 'Daily orbit clear' : 'Orbit clear'}
           score={state.score}
+          shareHref={isDaily ? shareOrbitHref(level.seed) : undefined}
           nextName={
-            id >= 250 && !isLesson
+            isDaily
+              ? 'Daily rank'
+              : id >= 250 && !isLesson
               ? 'Voyage complete'
               : nebulaAdvance
                 ? `Next world · ${nextLabel}`
@@ -671,17 +716,23 @@ function PlayPage() {
         />
       ) : null}
       {state.status === 'lost' ? (
-        <div className="rounded-2xl border border-red-400/40 bg-black/40 p-3 text-center">
-          <p className="display text-[24px]">Drift failed</p>
-          <p className="mt-1 text-[13px] text-white/70">{loseReason}</p>
-          <p className="mt-2 text-[13px] text-gold">{howToClear(state.objective)}</p>
-          <p className="mt-1 text-[12px] text-white/55">
-            Score and challenges do not finish the stage. Retry and work the orbit goal above.
-          </p>
-          <button type="button" className="mt-2 text-gold" onClick={() => resetRun(createGame(level))}>
-            Retry
-          </button>
-        </div>
+        <FailSheet
+          reason={loseReason}
+          how={howToClear(state.objective)}
+          lives={livesLeft}
+          onContinue={() => {
+            setState((s) => (s ? reduce(s, { type: 'resume', extraMoves: CONTINUE_MOVES }) : s))
+            setLivesLeft(getInventory().lives)
+          }}
+          onRetry={() => {
+            resetRun(createGame(level))
+            setLivesLeft(getInventory().lives)
+          }}
+          onAbandon={() => {
+            setLivesLeft(getInventory().lives)
+            void navigate({ to: '/' })
+          }}
+        />
       ) : null}
       {state.status === 'finale' ? (
         <p className="text-center text-[13px] text-magenta">Starburst Finale…</p>

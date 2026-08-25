@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { UniverseMap } from '~/ui/Map'
+import { VoyageMap } from '~/ui/VoyageMap'
 import { MapSkeleton } from '~/ui/skeletons'
 
 export const Route = createFileRoute('/')({
@@ -8,5 +8,5 @@ export const Route = createFileRoute('/')({
 })
 
 function Home() {
-  return <UniverseMap />
+  return <VoyageMap />
 }

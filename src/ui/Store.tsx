@@ -1,7 +1,10 @@
+import { dailyDeals, isGiftable } from '~/data/gifts'
 import { STORE_CATALOG, type StoreItem } from '~/data/store'
 import { useEffect, useMemo, useState } from 'react'
-import { getInventory, purchase } from '~/lib/progress'
+import { getInventory, purchase, isAdminPilot } from '~/lib/progress'
+import { getWishlist, toggleWish } from '~/lib/social'
 import { synth } from '~/audio/synth'
+import { GiftSheet } from './GiftSheet'
 import { KitIcon } from './KitIcon'
 
 const FILTERS = [
@@ -44,20 +47,53 @@ export function StoreGrid({ sector }: { sector: number }) {
   const [preview, setPreview] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [filter, setFilter] = useState<FilterId>('all')
+  const [showLocked, setShowLocked] = useState(false)
+  const [giftItem, setGiftItem] = useState<StoreItem | null>(null)
+  const [wish, setWish] = useState<string[]>(() => (typeof window === 'undefined' ? [] : getWishlist()))
+  const deals = useMemo(() => dailyDeals(), [])
 
   useEffect(() => {
     const live = getInventory()
     setInv({ items: live.items, skin: live.skin, sector: Math.max(sector, live.sector) })
   }, [sector])
 
-  const items = useMemo(() => STORE_CATALOG.filter((item) => matches(item, filter)), [filter])
-  const unlockedSector = Math.max(sector, inv.sector)
+  const unlockedSector = isAdminPilot() ? 5 : Math.max(sector, inv.sector)
+  const items = useMemo(() => {
+    return STORE_CATALOG.filter((item) => matches(item, filter))
+      .filter((item) => showLocked || unlockedSector >= item.minSector)
+      .sort((a, b) => {
+        const aGate = unlockedSector < a.minSector ? 1 : 0
+        const bGate = unlockedSector < b.minSector ? 1 : 0
+        if (aGate !== bGate) return aGate - bGate
+        if (a.minSector !== b.minSector) return a.minSector - b.minSector
+        return a.name.localeCompare(b.name)
+      })
+  }, [filter, unlockedSector, showLocked])
+  const openCount = items.filter((item) => unlockedSector >= item.minSector).length
 
   return (
     <div className="grid gap-3">
       <p className="text-[12px] text-white/55">
-        Kit charges are earned from rare sky drops or bought here. Later sectors unlock stronger tools.
+        Kit charges are earned from rare sky drops or bought here. Pulse packs fill toward 5 lives.{' '}
+        {openCount} listings open on your sector.
       </p>
+      <div className="rounded-2xl border border-gold/30 bg-black/25 p-3">
+        <p className="text-[10px] uppercase tracking-widest text-gold">Today&apos;s stall</p>
+        <ul className="mt-2 space-y-1">
+          {deals.map((d) => (
+            <li key={d.id} className="flex justify-between text-[12px] text-white/80">
+              <span>{d.name}</span>
+              <span className="text-gold">
+                {d.price} {d.currency}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <label className="flex items-center gap-2 text-[12px] text-white/60">
+        <input type="checkbox" checked={showLocked} onChange={(e) => setShowLocked(e.target.checked)} />
+        Show later-sector stock
+      </label>
       <div className="flex gap-1.5 overflow-x-auto pb-1">
         {FILTERS.map((f) => (
           <button
@@ -83,23 +119,26 @@ export function StoreGrid({ sector }: { sector: number }) {
               ? Object.keys(item.grants).reduce((n, id) => n + (inv.items[id] ?? 0), 0)
               : (inv.items[item.id] ?? 0)
         return (
-          <button
+          <div
             key={item.id}
-            type="button"
-            disabled={gated}
-            onClick={() => {
-              setPreview(item.id)
-              const res = purchase(item)
-              setErr(res.error ?? null)
-              if (!res.error) synth.fanfare()
-              else synth.invalid()
-              const live = getInventory()
-              setInv({ items: live.items, skin: live.skin, sector: Math.max(sector, live.sector) })
-              window.setTimeout(() => setPreview(null), 700)
-            }}
             className="store-card relative overflow-hidden rounded-2xl border border-white/10 bg-black/30 p-3 text-left disabled:opacity-40"
           >
             {preview === item.id ? <span className="purchase-nova" /> : null}
+            <button
+              type="button"
+              disabled={gated}
+              onClick={() => {
+                setPreview(item.id)
+                const res = purchase(item)
+                setErr(res.error ?? null)
+                if (!res.error) synth.fanfare()
+                else synth.invalid()
+                const live = getInventory()
+                setInv({ items: live.items, skin: live.skin, sector: Math.max(sector, live.sector) })
+                window.setTimeout(() => setPreview(null), 700)
+              }}
+              className="w-full text-left disabled:opacity-40"
+            >
             <div className="flex items-start justify-between gap-2">
               <div className="flex min-w-0 items-start gap-3">
                 {item.kit ? (
@@ -123,11 +162,37 @@ export function StoreGrid({ sector }: { sector: number }) {
                 <div className="text-white/40">{item.kind === 'skin' ? (owned ? 'equipped' : 'locked in') : `owned ${owned}`}</div>
               </div>
             </div>
-          </button>
+            </button>
+            <div className="mt-2 flex gap-2">
+              <button
+                type="button"
+                className="text-[11px] text-white/50"
+                onClick={() => setWish(toggleWish(item.id))}
+              >
+                {wish.includes(item.id) ? 'Wished' : 'Wish'}
+              </button>
+              {!gated && isGiftable(item) ? (
+                <button type="button" className="text-[11px] text-gold" onClick={() => setGiftItem(item)}>
+                  Gift
+                </button>
+              ) : null}
+            </div>
+          </div>
         )
       })}
       {items.length === 0 ? <p className="text-[13px] text-white/50">Nothing on this frequency.</p> : null}
       {err ? <p className="text-[12px] text-red-300">{err}</p> : null}
+      {giftItem ? (
+        <GiftSheet
+          item={giftItem}
+          onClose={(note) => {
+            setGiftItem(null)
+            if (note) setErr(note)
+            const live = getInventory()
+            setInv({ items: live.items, skin: live.skin, sector: Math.max(sector, live.sector) })
+          }}
+        />
+      ) : null}
     </div>
   )
 }

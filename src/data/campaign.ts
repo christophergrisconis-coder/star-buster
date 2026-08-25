@@ -372,28 +372,39 @@ export function generateCampaign(): CampaignNode {
                 ? pickIndices(rand, objective.remaining, new Set(frosting))
                 : []
 
+            const isBoss =
+              systemIndex === sector.systems.length - 1 &&
+              nebulaIndex === system.nebulas.length - 1 &&
+              stageIndex === nebula.stages.length - 1 &&
+              n === count - 1
+
             levels.push({
               id,
               seed,
-              name: `${nebula.name} ${stageIndex + 1}-${n + 1}`,
+              name: isBoss ? `${nebula.name} — BOSS` : `${nebula.name} ${stageIndex + 1}-${n + 1}`,
               sectorId: sector.id,
               systemId,
               nebulaId,
               stageId,
-              moves,
+              moves: isBoss ? Math.max(diff.minMoves, moves + 4) : moves,
               colorCount,
-              rewardCap: sectorMeta.rewardCap,
-              objective,
-              frosting,
-              marmalade,
+              rewardCap: isBoss ? sectorMeta.rewardCap * 2 : sectorMeta.rewardCap,
+              objective: isBoss && objective.type === 'jelly'
+                ? { type: 'jelly', remaining: objective.remaining + sector.id * 6 }
+                : objective,
+              frosting: isBoss
+                ? [...frosting, ...pickIndices(rand, 4 + sector.id * 2, new Set(frosting))]
+                : frosting,
+              marmalade: isBoss ? [...marmalade, ...pickIndices(rand, sector.id, new Set([...marmalade, ...frosting]))] : marmalade,
               locks,
               swirls,
-              chocolate,
-              bombs,
-              jelly,
+              chocolate: isBoss ? [...chocolate, ...pickIndices(rand, 2 + sector.id, new Set([...chocolate, ...frosting]))] : chocolate,
+              bombs: isBoss ? [...bombs, ...pickIndices(rand, Math.min(3, sector.id), new Set(bombs.map(b => b.index))).map(i => ({ index: i, turns: Math.max(5, 10 - sector.id) }))] : bombs,
+              jelly: isBoss && objective.type === 'jelly' ? jelly.map(j => j > 0 ? Math.min(2, j + 1) : j) : jelly,
               ingredients,
               exits: ingredientExits(sector.id),
-              timeLimit: levelTimeLimit(sector.id, id + n + nebulaIndex),
+              timeLimit: isBoss ? Math.floor(levelTimeLimit(sector.id, id + n + nebulaIndex) * 0.8) : levelTimeLimit(sector.id, id + n + nebulaIndex),
+              boss: isBoss || undefined,
             })
             levelIds.push(id)
           }

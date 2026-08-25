@@ -1,9 +1,12 @@
-import type { ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
 import { UniverseBackground } from '~/fx/universeBackground'
 import { WarpOverlay } from '~/fx/warpBurst'
+import { LivesPips } from './LivesPips'
 import { MuteButton } from './MuteButton'
 import { Tabs } from './Tabs'
+import { hydrateOwnerAccess } from '~/lib/owner'
+import { getInventory } from '~/lib/progress'
 
 export function ThemeToggle() {
   const toggle = () => {
@@ -32,6 +35,9 @@ export function ThemeToggle() {
 }
 
 export function Shell({ children }: { children: ReactNode }) {
+  useEffect(() => {
+    hydrateOwnerAccess()
+  }, [])
   return (
     <>
       <UniverseBackground />
@@ -42,6 +48,7 @@ export function Shell({ children }: { children: ReactNode }) {
             Star Buster
           </Link>
           <div className="flex items-center gap-1.5">
+            <LivesPips lives={typeof window === 'undefined' ? 5 : getInventory().lives} compact />
             <MuteButton />
             <ThemeToggle />
           </div>

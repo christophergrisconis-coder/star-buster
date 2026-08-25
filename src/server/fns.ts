@@ -33,12 +33,15 @@ export const sessionMiddleware = createMiddleware({ type: 'function' }).server(
 
 export const optionalSessionMiddleware = createMiddleware({ type: 'function' }).server(
   async ({ next }) => {
+    const ctx: { userId: string | null; token: string | null } = { userId: null, token: null }
     const token = parseSessionCookie(await cookieHeader())
-    if (!token) return next({ context: { userId: null as string | null, token: null as string | null } })
+    if (!token) return next({ context: ctx })
     const supabase = getSupabaseServer(token)
-    if (!supabase) return next({ context: { userId: null as string | null, token: null } })
+    if (!supabase) return next({ context: ctx })
     const { data } = await supabase.auth.getUser(token)
-    return next({ context: { userId: data.user?.id ?? null, token } })
+    ctx.token = token
+    ctx.userId = data.user?.id ?? null
+    return next({ context: ctx })
   },
 )
 
@@ -92,7 +95,7 @@ export const coachLineFn = createServerFn({ method: 'POST' })
   .middleware([optionalSessionMiddleware])
   .validator((d: { summary: string; move: string }) => d)
   .handler(async ({ data, context }) => {
-    const key = context.userId ?? 'guest'
+    const key = context?.userId ?? 'guest'
     const now = Date.now()
     const hits = (coachHits.get(key) ?? []).filter((t) => now - t < 60_000)
     if (hits.length >= 8) {

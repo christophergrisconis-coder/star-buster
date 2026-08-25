@@ -48,6 +48,9 @@ function NebulaPage() {
         <span className="pov-rule" />
         <p className="pov-deck">
           Clear every orbit on this world to open the next planet. {cleared} / {ids.length} surveyed.
+          {ids.every((id) => (progress.levels[id]?.stars ?? 0) >= 3)
+            ? ' Three-star stamp sealed — kit dropped to your bay.'
+            : ' Three-star every orbit for a stamp reward.'}
         </p>
       </header>
 
@@ -76,7 +79,7 @@ function NebulaPage() {
                         navigate({
                           to: '/play/$levelId',
                           params: { levelId: String(lid) },
-                          search: { challenge: undefined },
+                          search: { challenge: undefined, seed: undefined },
                         }),
                       )
                     }}
@@ -110,7 +113,7 @@ function NebulaPage() {
                       navigate({
                         to: '/play/$levelId',
                         params: { levelId: String(firstOpen) },
-                        search: { challenge: item.kind === 'clear' ? undefined : item.id },
+                        search: { challenge: item.kind === 'clear' ? undefined : item.id, seed: undefined },
                       }),
                     )
                   }}

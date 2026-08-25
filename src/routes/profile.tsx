@@ -2,20 +2,23 @@ import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { getSessionUser } from '~/server/session'
-import { getInventory, getProgress, grantAdminKit, isAdminPilot, setAdminPilot } from '~/lib/progress'
+import { getInventory, getProgress, grantAdminKit, isAdminPilot, setAdminPilot, unlockAdminVoyage } from '~/lib/progress'
+import { getOwnerSession, OWNER_EMAIL, hydrateOwnerAccess } from '~/lib/owner'
 import { ProfileSkeleton } from '~/ui/skeletons'
 import { createBrowserSupabase } from '~/lib/supabase/client'
 
 export const Route = createFileRoute('/profile')({
   beforeLoad: async () => {
-    const session = await getSessionUser()
     if (typeof window !== 'undefined') {
+      hydrateOwnerAccess()
+      if (getOwnerSession()) return { session: { user: { email: OWNER_EMAIL } } }
       const sb = createBrowserSupabase()
       if (sb) {
         const { data } = await sb.auth.getSession()
         if (data.session) return { session: data.session }
       }
     }
+    const session = await getSessionUser()
     if (!session) throw redirect({ to: '/auth' })
     return { session }
   },
@@ -25,7 +28,16 @@ export const Route = createFileRoute('/profile')({
 function ProfilePage() {
   const q = useQuery({
     queryKey: ['me'],
-    queryFn: () => getSessionUser(),
+    queryFn: async () => {
+      const owner = getOwnerSession()
+      if (owner) {
+        return {
+          id: 'owner',
+          profile: { id: 'owner', display_name: 'Owner', avatar_url: null },
+        }
+      }
+      return getSessionUser()
+    },
   })
   const inv = typeof window === 'undefined' ? null : getInventory()
   const progress = typeof window === 'undefined' ? null : getProgress()
@@ -43,6 +55,7 @@ function ProfilePage() {
           setTaps(next)
           if (next >= 7) {
             setAdminPilot(true)
+            unlockAdminVoyage()
             setAdmin(true)
             setAdminNote('Admin unlocked')
           }
@@ -72,6 +85,8 @@ function ProfilePage() {
         <Stat label="Coins" value={String(inv?.coins ?? 0)} />
         <Stat label="Stardust" value={String(inv?.stardust ?? 0)} />
         <Stat label="Skin" value={inv?.skin ?? 'nova-gold'} />
+        <Stat label="Comet streak" value={String(progress?.cometStreak ?? 0)} />
+        <Stat label="Stamps" value={String(Object.keys(progress?.stamps ?? {}).length)} />
       </div>
       {admin ? (
         <div className="rounded-2xl border border-gold/30 bg-black/30 p-3">

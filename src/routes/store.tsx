@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { StoreGrid } from '~/ui/Store'
 import { WalletBar } from '~/ui/WalletBar'
 import { getInventory } from '~/lib/progress'
@@ -14,6 +14,12 @@ function StorePage() {
       <h1 className="display text-[28px] text-gold">Star Market</h1>
       <p className="text-[13px] text-white/70">Spend coins and stardust. Sector gates stay honest.</p>
       <WalletBar />
+      <Link
+        to="/lucky-draw"
+        className="block w-full rounded-2xl border border-magenta/40 bg-magenta/10 p-3 text-center text-[14px] font-semibold text-magenta"
+      >
+        Lucky Draw — 1 free daily
+      </Link>
       <StoreGrid sector={inv.sector} />
     </div>
   )

@@ -162,7 +162,7 @@ describe('matches', () => {
     expect(groups.some((g) => g.color === 'gold' && g.indices.length >= 3)).toBe(true)
   })
 
-  it('detects a 2x2 square and an L of three as matches', () => {
+  it('detects a 2x2 square and an L of three as matches consistently', () => {
     const quiet = Array.from({ length: BOARD_SIZE }, (_, i) => {
       const x = i % BOARD_WIDTH
       const y = Math.floor(i / BOARD_WIDTH)
@@ -182,12 +182,8 @@ describe('matches', () => {
     ell[idx(1, 1)] = starCell('gold')
     ell[idx(2, 0)] = starCell('gold')
     ell[idx(0, 2)] = starCell('gold')
-    expect(
-      findMatches(ell, BOARD_WIDTH, BOARD_HEIGHT, [idx(0, 0)]).some(
-        (g) => g.color === 'cyan' && g.indices.length >= 3,
-      ),
-    ).toBe(true)
-    expect(findMatches(ell, BOARD_WIDTH, BOARD_HEIGHT).some((g) => g.color === 'cyan')).toBe(false)
+    expect(findMatches(ell, BOARD_WIDTH, BOARD_HEIGHT).some((g) => g.color === 'cyan' && g.indices.length >= 3)).toBe(true)
+    expect(findMatches(ell, BOARD_WIDTH, BOARD_HEIGHT, [idx(0, 0)]).some((g) => g.color === 'cyan' && g.indices.length >= 3)).toBe(true)
   })
 
   it('opens without dead lined-up stars and always has a legal swap', () => {
@@ -222,15 +218,60 @@ describe('matches', () => {
 })
 
 describe('special combos', () => {
-  it('a 4-match creates a sun', () => {
-    const state = createGame(level({ seed: 5 }))
-    const cells = state.cells.map((c) => ({ ...c }))
-    cells[idx(0, 4)] = starCell('gold')
-    cells[idx(1, 4)] = starCell('gold')
-    cells[idx(2, 4)] = starCell('gold')
-    cells[idx(3, 4)] = starCell('gold')
-    const groups = findMatches(cells, BOARD_WIDTH, BOARD_HEIGHT)
-    expect(groups.some((g) => g.kind === 'wrapped' && g.indices.length >= 4)).toBe(true)
+  it('a horizontal 4-match creates a vertical striped', () => {
+    const quiet = Array.from({ length: BOARD_SIZE }, () => starCell('red'))
+    for (let x = 0; x < BOARD_WIDTH; x++) for (let y = 0; y < BOARD_HEIGHT; y++) {
+      quiet[idx(x, y)] = starCell(x % 2 === 0 ? 'red' : 'blue')
+    }
+    quiet[idx(3, 4)] = starCell('gold')
+    quiet[idx(4, 4)] = starCell('gold')
+    quiet[idx(5, 4)] = starCell('gold')
+    quiet[idx(6, 4)] = starCell('gold')
+    const groups = findMatches(quiet, BOARD_WIDTH, BOARD_HEIGHT)
+    expect(groups.some((g) => g.kind === 'striped-v' && g.color === 'gold')).toBe(true)
+  })
+
+  it('a vertical 4-match creates a horizontal striped', () => {
+    const quiet = Array.from({ length: BOARD_SIZE }, () => starCell('red'))
+    for (let x = 0; x < BOARD_WIDTH; x++) for (let y = 0; y < BOARD_HEIGHT; y++) {
+      quiet[idx(x, y)] = starCell(y % 2 === 0 ? 'red' : 'blue')
+    }
+    quiet[idx(4, 3)] = starCell('gold')
+    quiet[idx(4, 4)] = starCell('gold')
+    quiet[idx(4, 5)] = starCell('gold')
+    quiet[idx(4, 6)] = starCell('gold')
+    const groups = findMatches(quiet, BOARD_WIDTH, BOARD_HEIGHT)
+    expect(groups.some((g) => g.kind === 'striped-h' && g.color === 'gold')).toBe(true)
+  })
+
+  it('a 5-match creates a color-bomb', () => {
+    const quiet = Array.from({ length: BOARD_SIZE }, (_, i) => {
+      const x = i % BOARD_WIDTH
+      const y = Math.floor(i / BOARD_WIDTH)
+      return starCell(STAR_COLORS[(x + y * 2) % STAR_COLORS.length]!)
+    })
+    quiet[idx(0, 4)] = starCell('gold')
+    quiet[idx(1, 4)] = starCell('gold')
+    quiet[idx(2, 4)] = starCell('gold')
+    quiet[idx(3, 4)] = starCell('gold')
+    quiet[idx(4, 4)] = starCell('gold')
+    const groups = findMatches(quiet, BOARD_WIDTH, BOARD_HEIGHT)
+    expect(groups.some((g) => g.kind === 'color-bomb' && g.indices.length >= 5)).toBe(true)
+  })
+
+  it('an L/T shape creates a wrapped special', () => {
+    const quiet = Array.from({ length: BOARD_SIZE }, (_, i) => {
+      const x = i % BOARD_WIDTH
+      const y = Math.floor(i / BOARD_WIDTH)
+      return starCell(STAR_COLORS[(x + y * 2) % STAR_COLORS.length]!)
+    })
+    quiet[idx(2, 2)] = starCell('gold')
+    quiet[idx(3, 2)] = starCell('gold')
+    quiet[idx(4, 2)] = starCell('gold')
+    quiet[idx(2, 3)] = starCell('gold')
+    quiet[idx(2, 4)] = starCell('gold')
+    const groups = findMatches(quiet, BOARD_WIDTH, BOARD_HEIGHT)
+    expect(groups.some((g) => g.kind === 'wrapped' && g.color === 'gold')).toBe(true)
   })
 
   it('two suns fuse into a larger blast and refill without holes', () => {
@@ -394,5 +435,24 @@ describe('starburst finale', () => {
     assertNoHoles(ticked)
     if (after === 0) expect(ticked.status).toBe('won')
     else expect(ticked.status).toBe('finale')
+  })
+})
+
+describe('kit sun tick and resume', () => {
+  it('hammer on a sun detonates instead of chipping one tile', () => {
+    const state = createGame(level({ seed: 12 }))
+    const cells = state.cells.map((c) => ({ ...c }))
+    cells[idx(4, 4)] = { ...starCell('gold'), special: 'wrapped' }
+    const next = reduce({ ...state, cells }, { type: 'hammer', index: idx(4, 4) })
+    const wave = next.events.find((e) => e.type === 'wave')
+    expect(wave && wave.type === 'wave' && wave.destroyed.length).toBeGreaterThan(1)
+    assertNoHoles(next)
+  })
+
+  it('resumes a lost orbit with extra moves', () => {
+    const lost = { ...createGame(level({ seed: 4 })), status: 'lost' as const, movesLeft: 0 }
+    const next = reduce(lost, { type: 'resume', extraMoves: 5 })
+    expect(next.status).toBe('playing')
+    expect(next.movesLeft).toBe(5)
   })
 })

@@ -43,7 +43,7 @@ export const LESSONS: LessonStep[] = [
   {
     id: 'swap',
     title: 'Slide two neighbors',
-    body: 'Drag the glowing blue star onto the gold beside it. Three in a row — or three in a square corner — burst. That’s the voyage in one swipe.',
+    body: 'Drag the glowing blue star onto the gold beside it. Three in a row — or a full 2×2 square — burst. That’s the voyage in one swipe.',
     wait: 'swap',
     pair: TUTORIAL_PAIR,
     spotlight: [TUTORIAL_PAIR.a, TUTORIAL_PAIR.b],

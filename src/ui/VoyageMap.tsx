@@ -76,11 +76,11 @@ export function VoyageMap() {
   const primed = useRef(false)
   const [step, setStep] = useState(280)
   const [dest, setDest] = useState<ReturnType<typeof playDestination> | null>(null)
-  const [school, setSchool] = useState(() => typeof window === 'undefined' || !hasCompletedTutorial())
+  // Use stable server-safe defaults to avoid SSR hydration mismatch.
+  // Both values are synced to real client state inside the useEffect below.
+  const [school, setSchool] = useState(true)
   const [travel, setTravel] = useState(0)
-  const [progress, setProgress] = useState(() =>
-    typeof window === 'undefined' ? { levels: {}, guest: true } : getProgress(),
-  )
+  const [progress, setProgress] = useState<ReturnType<typeof getProgress>>({ levels: {}, guest: true })
 
   useEffect(() => {
     const refresh = () => {
@@ -161,7 +161,7 @@ export function VoyageMap() {
         void navigate({
           to: '/play/$levelId',
           params: { levelId: 'tutorial' },
-          search: { challenge: undefined },
+          search: { challenge: undefined, seed: undefined },
         })
         return
       }
@@ -186,6 +186,10 @@ export function VoyageMap() {
             {current?.firstLevelId === 'tutorial'
               ? 'Training'
               : `${current?.sectorName} · ${cleared} / ${current?.orbits ?? 0} orbits`}
+          </p>
+          <p className="pov-deck text-[11px] text-gold">
+            Comet streak x{progress.cometStreak ?? 0}
+            {current && current.firstLevelId !== 'tutorial' && progress.stamps?.[current.nebulaId] ? ' · Stamp sealed' : ''}
           </p>
         </div>
         <p className="pov-folio">{index + 1} / {nodes.length}</p>

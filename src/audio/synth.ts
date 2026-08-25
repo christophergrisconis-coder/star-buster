@@ -28,41 +28,140 @@ export class StarSynth {
     }
   }
 
+  private arpScale = [261.6, 329.6, 392, 523.3, 659.3, 784, 1047]
+
   pop(combo: number) {
     if (this.muted) return
     this.ensure()
     const ctx = this.ctx!
     const master = this.master!
+
+    const noteIndex = Math.min(combo - 1, this.arpScale.length - 1)
+    const freq = this.arpScale[Math.max(0, noteIndex)]! * (1 + combo * 0.02)
+
     const osc = ctx.createOscillator()
     const filter = ctx.createBiquadFilter()
     const gain = ctx.createGain()
-    osc.type = 'triangle'
-    const freq = 320 * Math.pow(1.145, Math.min(combo, 16))
+    osc.type = combo >= 4 ? 'sawtooth' : 'triangle'
     osc.frequency.setValueAtTime(freq, ctx.currentTime)
     osc.frequency.exponentialRampToValueAtTime(freq * 1.85, ctx.currentTime + 0.09)
     filter.type = 'lowpass'
-    filter.frequency.value = 2200 + combo * 260
-    filter.Q.value = 7
+    filter.frequency.value = 2200 + combo * 320
+    filter.Q.value = 7 + combo
     gain.gain.setValueAtTime(0.0001, ctx.currentTime)
-    gain.gain.exponentialRampToValueAtTime(0.32, ctx.currentTime + 0.012)
-    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.15)
+    gain.gain.exponentialRampToValueAtTime(Math.min(0.38, 0.22 + combo * 0.02), ctx.currentTime + 0.012)
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.15 + combo * 0.01)
     osc.connect(filter)
     filter.connect(gain)
     gain.connect(master)
     osc.start()
-    osc.stop(ctx.currentTime + 0.17)
+    osc.stop(ctx.currentTime + 0.2 + combo * 0.01)
+
     const ping = ctx.createOscillator()
     const pingGain = ctx.createGain()
     ping.type = 'sine'
     ping.frequency.setValueAtTime(freq * 2.15, ctx.currentTime)
     ping.frequency.exponentialRampToValueAtTime(freq * 3.1, ctx.currentTime + 0.07)
     pingGain.gain.setValueAtTime(0.0001, ctx.currentTime)
-    pingGain.gain.exponentialRampToValueAtTime(0.12, ctx.currentTime + 0.01)
+    pingGain.gain.exponentialRampToValueAtTime(0.12 + combo * 0.015, ctx.currentTime + 0.01)
     pingGain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.11)
     ping.connect(pingGain)
     pingGain.connect(master)
     ping.start()
     ping.stop(ctx.currentTime + 0.12)
+
+    if (combo >= 3) {
+      const shimmer = ctx.createOscillator()
+      const shimGain = ctx.createGain()
+      shimmer.type = 'sine'
+      shimmer.frequency.setValueAtTime(freq * 4, ctx.currentTime + 0.04)
+      shimmer.frequency.exponentialRampToValueAtTime(freq * 5.5, ctx.currentTime + 0.1)
+      shimGain.gain.setValueAtTime(0.0001, ctx.currentTime + 0.04)
+      shimGain.gain.exponentialRampToValueAtTime(0.06, ctx.currentTime + 0.055)
+      shimGain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.14)
+      shimmer.connect(shimGain)
+      shimGain.connect(master)
+      shimmer.start(ctx.currentTime + 0.04)
+      shimmer.stop(ctx.currentTime + 0.15)
+    }
+  }
+
+  stripedClear() {
+    if (this.muted) return
+    this.ensure()
+    const ctx = this.ctx!
+    const master = this.master!
+    ;[0, 0.04, 0.08].forEach((t, i) => {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.type = 'sawtooth'
+      osc.frequency.value = 200 + i * 180
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime + t)
+      gain.gain.exponentialRampToValueAtTime(0.14, ctx.currentTime + t + 0.015)
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + t + 0.18)
+      const filter = ctx.createBiquadFilter()
+      filter.type = 'bandpass'
+      filter.frequency.value = 800 + i * 300
+      osc.connect(filter)
+      filter.connect(gain)
+      gain.connect(master)
+      osc.start(ctx.currentTime + t)
+      osc.stop(ctx.currentTime + t + 0.2)
+    })
+  }
+
+  colorBombBlast() {
+    if (this.muted) return
+    this.ensure()
+    const ctx = this.ctx!
+    const master = this.master!
+    const notes = [261.6, 329.6, 392, 523.3, 659.3]
+    notes.forEach((freq, i) => {
+      const t = i * 0.06
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.type = 'triangle'
+      osc.frequency.value = freq
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime + t)
+      gain.gain.exponentialRampToValueAtTime(0.18, ctx.currentTime + t + 0.02)
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + t + 0.22)
+      osc.connect(gain)
+      gain.connect(master)
+      osc.start(ctx.currentTime + t)
+      osc.stop(ctx.currentTime + t + 0.24)
+    })
+  }
+
+  gachaReveal(rarity: 'common' | 'rare' | 'epic' | 'legendary') {
+    if (this.muted) return
+    this.ensure()
+    const ctx = this.ctx!
+    const master = this.master!
+    const noteMap = {
+      common: [392, 523],
+      rare: [392, 523, 659],
+      epic: [392, 523, 659, 784],
+      legendary: [392, 494, 587, 659, 784, 1047],
+    }
+    const notes = noteMap[rarity]
+    notes.forEach((freq, i) => {
+      const t = i * 0.1
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.type = rarity === 'legendary' ? 'sawtooth' : 'triangle'
+      const filter = ctx.createBiquadFilter()
+      filter.type = 'lowpass'
+      filter.frequency.value = rarity === 'legendary' ? 3000 : 1800
+      osc.frequency.value = freq
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime + t)
+      gain.gain.exponentialRampToValueAtTime(rarity === 'legendary' ? 0.25 : 0.18, ctx.currentTime + t + 0.03)
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + t + 0.35)
+      osc.connect(filter)
+      filter.connect(gain)
+      gain.connect(master)
+      osc.start(ctx.currentTime + t)
+      osc.stop(ctx.currentTime + t + 0.38)
+    })
   }
 
   whoosh() {
@@ -196,8 +295,14 @@ export class StarSynth {
     osc.stop(ctx.currentTime + 0.3)
   }
 
-  banner() {
-    this.fanfare()
+  banner(word?: string) {
+    if (word === 'GALAXY BUSTER' || word === 'SUPERNOVA') {
+      this.colorBombBlast()
+    } else if (word === 'STELLAR' || word === 'SUPERSTAR') {
+      this.stripedClear()
+    } else {
+      this.fanfare()
+    }
   }
 
   invalid() {
