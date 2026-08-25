@@ -303,7 +303,28 @@ function FriendsPage() {
         Claim today&apos;s crew pulse
       </button>
 
-      <h2 className="display text-[20px] text-gold">Your crew</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="display text-[20px] text-gold">Your crew</h2>
+        {docked.length > 0 ? (
+          <button
+            type="button"
+            className="rounded-full bg-gold/20 border border-gold/40 px-3 py-1 text-[11px] font-bold text-gold hover:bg-gold/30 active:scale-95 transition-transform"
+            onClick={() => {
+              void (async () => {
+                let sent = 0
+                for (const p of docked) {
+                  const res = await dispatchLifeGift(p.displayName, cloud)
+                  if (!res.error) sent++
+                }
+                setNote(`⚡ Sent energy pulses to ${sent} wingmate${sent === 1 ? '' : 's'}!`)
+                refreshLocal()
+              })()
+            }}
+          >
+            ⚡ Pulse All Wingmates ({docked.length})
+          </button>
+        ) : null}
+      </div>
       <ul className="space-y-2">
         {crew.length === 0 ? (
           <li className="text-[13px] text-white/50">No wingmates yet. Scan a callsign to send a ping.</li>

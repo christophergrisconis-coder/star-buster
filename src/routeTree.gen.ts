@@ -17,6 +17,7 @@ import { Route as LeaderboardRouteImport } from './routes/leaderboard'
 import { Route as LuckyDrawRouteImport } from './routes/lucky-draw'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as StoreRouteImport } from './routes/store'
+import { Route as ZenRouteImport } from './routes/zen'
 import { Route as ChallengesIndexRouteImport } from './routes/challenges.index'
 import { Route as ChallengesNebulaIdRouteImport } from './routes/challenges.$nebulaId'
 import { Route as NebulaNebulaIdRouteImport } from './routes/nebula.$nebulaId'
@@ -63,6 +64,11 @@ const StoreRoute = StoreRouteImport.update({
   path: '/store',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ZenRoute = ZenRouteImport.update({
+  id: '/zen',
+  path: '/zen',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ChallengesIndexRoute = ChallengesIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -98,6 +104,7 @@ export interface FileRoutesByFullPath {
   '/lucky-draw': typeof LuckyDrawRoute
   '/profile': typeof ProfileRoute
   '/store': typeof StoreRoute
+  '/zen': typeof ZenRoute
   '/challenges/$nebulaId': typeof ChallengesNebulaIdRoute
   '/nebula/$nebulaId': typeof NebulaNebulaIdRoute
   '/play/$levelId': typeof PlayLevelIdRoute
@@ -112,6 +119,7 @@ export interface FileRoutesByTo {
   '/lucky-draw': typeof LuckyDrawRoute
   '/profile': typeof ProfileRoute
   '/store': typeof StoreRoute
+  '/zen': typeof ZenRoute
   '/challenges/$nebulaId': typeof ChallengesNebulaIdRoute
   '/nebula/$nebulaId': typeof NebulaNebulaIdRoute
   '/play/$levelId': typeof PlayLevelIdRoute
@@ -128,6 +136,7 @@ export interface FileRoutesById {
   '/lucky-draw': typeof LuckyDrawRoute
   '/profile': typeof ProfileRoute
   '/store': typeof StoreRoute
+  '/zen': typeof ZenRoute
   '/challenges/$nebulaId': typeof ChallengesNebulaIdRoute
   '/nebula/$nebulaId': typeof NebulaNebulaIdRoute
   '/play/$levelId': typeof PlayLevelIdRoute
@@ -145,6 +154,7 @@ export interface FileRouteTypes {
     | '/lucky-draw'
     | '/profile'
     | '/store'
+    | '/zen'
     | '/challenges/$nebulaId'
     | '/nebula/$nebulaId'
     | '/play/$levelId'
@@ -159,6 +169,7 @@ export interface FileRouteTypes {
     | '/lucky-draw'
     | '/profile'
     | '/store'
+    | '/zen'
     | '/challenges/$nebulaId'
     | '/nebula/$nebulaId'
     | '/play/$levelId'
@@ -174,6 +185,7 @@ export interface FileRouteTypes {
     | '/lucky-draw'
     | '/profile'
     | '/store'
+    | '/zen'
     | '/challenges/$nebulaId'
     | '/nebula/$nebulaId'
     | '/play/$levelId'
@@ -190,6 +202,7 @@ export interface RootRouteChildren {
   LuckyDrawRoute: typeof LuckyDrawRoute
   ProfileRoute: typeof ProfileRoute
   StoreRoute: typeof StoreRoute
+  ZenRoute: typeof ZenRoute
   NebulaNebulaIdRoute: typeof NebulaNebulaIdRoute
   PlayLevelIdRoute: typeof PlayLevelIdRoute
   SystemSystemIdRoute: typeof SystemSystemIdRoute
@@ -253,6 +266,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StoreRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/zen': {
+      id: '/zen'
+      path: '/zen'
+      fullPath: '/zen'
+      preLoaderRoute: typeof ZenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/challenges/': {
       id: '/challenges/'
       path: '/'
@@ -314,6 +334,7 @@ const rootRouteChildren: RootRouteChildren = {
   LuckyDrawRoute: LuckyDrawRoute,
   ProfileRoute: ProfileRoute,
   StoreRoute: StoreRoute,
+  ZenRoute: ZenRoute,
   NebulaNebulaIdRoute: NebulaNebulaIdRoute,
   PlayLevelIdRoute: PlayLevelIdRoute,
   SystemSystemIdRoute: SystemSystemIdRoute,

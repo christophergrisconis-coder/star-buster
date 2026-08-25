@@ -40,6 +40,7 @@ export interface ProgressBlob {
   nebulaChallenges?: Record<string, { completed: boolean; at?: string }>
   challengeRerolls?: Record<string, number>
   badges?: string[]
+  equippedTitle?: string
   lastNebulaId?: string
   lastActiveAt?: number
   stamps?: Record<string, boolean>
@@ -302,6 +303,16 @@ export function nebulaChallengeComplete(challengeId: string): boolean {
 
 export function earnedBadges(): string[] {
   return getProgress().badges ?? []
+}
+
+export function getEquippedTitle(): string {
+  return getProgress().equippedTitle ?? 'Orbit Cadet'
+}
+
+export function setEquippedTitle(title: string) {
+  const p = getProgress()
+  p.equippedTitle = title
+  write(KEY, p)
 }
 
 export function getRerollSeed(nebulaId: string): number {
