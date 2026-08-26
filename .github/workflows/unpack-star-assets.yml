@@ -1,0 +1,39 @@
+name: Unpack Anaclara star assets
+on:
+  push:
+    paths:
+      - 'scripts/anaclara-star-assets-*.b64.json'
+  workflow_dispatch:
+jobs:
+  unpack:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Decode binary assets
+        run: |
+          python3 << 'PY'
+          import json, base64, pathlib, glob
+          for fp in sorted(glob.glob('scripts/anaclara-star-assets-*.b64.json')):
+              data = json.loads(pathlib.Path(fp).read_text())
+              for rel, b64 in data.items():
+                  path = pathlib.Path(rel)
+                  path.parent.mkdir(parents=True, exist_ok=True)
+                  path.write_bytes(base64.b64decode(b64))
+                  print('wrote', rel, path.stat().st_size)
+          PY
+      - name: Commit unpacked assets
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/
+          if git diff --cached --quiet; then
+            echo "No binary changes to commit"
+          else
+            git commit -m "Add Anaclara star PNG/ICO assets for board and PWA"
+            git push
+          fi
