@@ -18,10 +18,38 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A -- 'src/routes/play.$levelId.tsx' 'src/styles/app.css'
-          if git diff --cached --quiet; then
-            echo "No changes to commit"
+          git add -A -- 'src/routes/play.$levelId.tsx' 'src/styles/app.css' || true
+          for i in 00 01 02 03 04 05; do
+            git add -A -- "scripts/anaclara-star-assets-${i}.b64.json" || true
+          done
+          # Prefer committing only newly staged assembled outputs with pack-specific messages
+          if ! git diff --cached --quiet; then
+            # Split commits per asset pack when only assets changed; otherwise one commit for sources
+            ASSETS=$(git diff --cached --name-only | grep -E 'anaclara-star-assets-[0-9]+\.b64\.json' || true)
+            SOURCES=$(git diff --cached --name-only | grep -E '^(src/)' || true)
+            if [ -n "$SOURCES" ]; then
+              git commit -m "Add cinema scene CSS and round finale FX hook on play route"
+              git push
+            elif [ -n "$ASSETS" ]; then
+              # Unstage all, then commit each asset file separately
+              git reset HEAD
+              for f in $ASSETS; do
+                git add -- "$f"
+                base=$(basename "$f")
+                num=${base##*-}
+                num=${num%%.*}
+                if [ "$num" = "05" ]; then
+                  msg="Add Anaclara star PNG/ICO base64 packs for Actions unpack"
+                else
+                  msg="Add star asset pack ${num}"
+                fi
+                git commit -m "$msg"
+              done
+              git push
+            else
+              git commit -m "Assemble staged sources"
+              git push
+            fi
           else
-            git commit -m "Add cinema scene CSS and round finale FX hook on play route"
-            git push
+            echo "No changes to commit"
           fi
