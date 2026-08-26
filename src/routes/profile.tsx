@@ -12,18 +12,20 @@ import {
   getEquippedTitle,
   setEquippedTitle,
 } from '~/lib/progress'
-import { getOwnerSession, OWNER_EMAIL, hydrateOwnerAccess } from '~/lib/owner'
+import { getOwnerSession, OWNER_EMAIL, hydrateOwnerAccess, signOutOwner } from '~/lib/owner'
 import { ProfileSkeleton } from '~/ui/skeletons'
 import { createBrowserSupabase } from '~/lib/supabase/client'
 import { BADGES, PILOT_TITLES } from '~/data/rewards'
 import { DailyStreakModal } from '~/ui/DailyStreakModal'
 import { canClaimToday } from '~/data/streak'
+import { useNavigate } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/profile')({
   beforeLoad: async () => {
     if (typeof window !== 'undefined') {
       hydrateOwnerAccess()
-      if (getOwnerSession()) return { session: { user: { email: OWNER_EMAIL } } }
+      const owner = getOwnerSession()
+      if (owner) return { session: { user: { email: owner.email } } }
       const sb = createBrowserSupabase()
       if (sb) {
         const { data } = await sb.auth.getSession()
@@ -44,8 +46,8 @@ function ProfilePage() {
       const owner = getOwnerSession()
       if (owner) {
         return {
-          id: 'owner',
-          profile: { id: 'owner', display_name: 'Owner', avatar_url: null },
+          id: owner.email,
+          profile: { id: owner.email, display_name: owner.displayName, avatar_url: null },
         }
       }
       return getSessionUser()
@@ -208,6 +210,20 @@ function ProfilePage() {
           {adminNote ? <p className="mt-2 text-[12px] text-emerald-400 font-semibold">{adminNote}</p> : null}
         </div>
       ) : null}
+
+      {/* Sign out / Switch Account */}
+      <button
+        type="button"
+        className="w-full rounded-2xl border border-white/10 bg-white/5 py-3 text-center text-[13px] text-white/60 hover:bg-white/10 hover:text-white"
+        onClick={() => {
+          signOutOwner()
+          const sb = createBrowserSupabase()
+          if (sb) void sb.auth.signOut()
+          window.location.href = '/auth'
+        }}
+      >
+        Sign Out / Switch Pilot
+      </button>
 
       <DailyStreakModal
         isOpen={showStreak}

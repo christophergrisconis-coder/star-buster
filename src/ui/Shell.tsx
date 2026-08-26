@@ -7,6 +7,7 @@ import { MuteButton } from './MuteButton'
 import { Tabs } from './Tabs'
 import { hydrateOwnerAccess } from '~/lib/owner'
 import { getInventory } from '~/lib/progress'
+import { AnaclaraLoveModal } from './AnaclaraLoveModal'
 
 export function ThemeToggle() {
   const toggle = () => {
@@ -56,6 +57,7 @@ export function Shell({ children }: { children: ReactNode }) {
         <Tabs />
         <div className="app-main relative z-10 min-h-0 flex-1">{children}</div>
       </div>
+      <AnaclaraLoveModal />
     </>
   )
 }

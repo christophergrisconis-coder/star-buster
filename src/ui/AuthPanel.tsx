@@ -133,13 +133,16 @@ export function AuthPanel({ heading = 'Docking Bay' }: { heading?: string }) {
           onSubmit={(e) => {
             e.preventDefault()
             void run(async () => {
-              if (signInOwner(email, password).error == null) {
+              const ownerRes = signInOwner(email, password)
+              if (!ownerRes.error) {
                 setLastProvider('email')
                 finish()
                 return
               }
               const sb = createBrowserSupabase()
-              if (!sb) throw new Error('Supabase env vars are missing.')
+              if (!sb) {
+                throw new Error(ownerRes.error ?? 'Invalid email or password.')
+              }
               setLastProvider('email')
               if (mode === 'up') {
                 const { error: err } = await sb.auth.signUp({ email, password })
