@@ -4,15 +4,15 @@ import { LEVELS as PLAY_LEVELS } from './levels'
 import { UNIVERSE } from './universe'
 
 describe('campaign', () => {
-  it('contains exactly 250 levels', () => {
-    expect(CAMPAIGN_LEVELS.length).toBe(250)
-    expect(PLAY_LEVELS.length).toBe(250)
-    expect(UNIVERSE.stages.flatMap((s) => s.levelIds).length).toBe(250)
-    expect(new Set(PLAY_LEVELS.map((l) => l.id)).size).toBe(250)
+  it('contains exactly 330 levels', () => {
+    expect(CAMPAIGN_LEVELS.length).toBe(330)
+    expect(PLAY_LEVELS.length).toBe(330)
+    expect(UNIVERSE.stages.flatMap((s) => s.levelIds).length).toBe(330)
+    expect(new Set(PLAY_LEVELS.map((l) => l.id)).size).toBe(330)
   })
 
   it('nests sectors → systems → nebulas → stages', () => {
-    expect(SECTORS).toHaveLength(5)
+    expect(SECTORS).toHaveLength(6)
     expect(CAMPAIGN.systems.length).toBeGreaterThan(0)
     expect(UNIVERSE.systems.length).toBeGreaterThan(0)
     expect(UNIVERSE.nebulas.length).toBeGreaterThan(0)

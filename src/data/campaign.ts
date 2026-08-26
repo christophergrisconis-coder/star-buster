@@ -5,150 +5,7 @@ import {
   levelTimeLimit,
   sectorDifficulty,
 } from './difficulty'
-import { SECTORS } from './sectors'
-
-type StageSpec = number[]
-
-interface NebulaSpec {
-  name: string
-  stages: StageSpec
-}
-
-interface SystemSpec {
-  name: string
-  nebulas: NebulaSpec[]
-}
-
-interface SectorSpec {
-  id: number
-  systems: SystemSpec[]
-}
-
-const TREE: SectorSpec[] = [
-  {
-    id: 1,
-    systems: [
-      {
-        name: 'Helios Drift',
-        nebulas: [
-          { name: 'Amber Veil', stages: [5, 5] },
-          { name: 'Coral Drift', stages: [5, 5] },
-        ],
-      },
-      {
-        name: 'Lyra Wake',
-        nebulas: [
-          { name: 'Violet Mist', stages: [5, 5] },
-          { name: 'Ion Shoal', stages: [5, 5] },
-        ],
-      },
-    ],
-  },
-  {
-    id: 2,
-    systems: [
-      {
-        name: 'Kepler Ring',
-        nebulas: [
-          { name: 'Dust Choir', stages: [4, 4] },
-          { name: 'Glass Halo', stages: [3, 4] },
-        ],
-      },
-      {
-        name: 'Vespera',
-        nebulas: [
-          { name: 'Crimson Arc', stages: [4, 4] },
-          { name: 'Pale Corona', stages: [3, 4] },
-        ],
-      },
-      {
-        name: 'Astra Current',
-        nebulas: [
-          { name: 'Blue Fold', stages: [4, 4] },
-          { name: 'Silent Wake', stages: [3, 4] },
-        ],
-      },
-    ],
-  },
-  {
-    id: 3,
-    systems: [
-      {
-        name: 'Titan Well',
-        nebulas: [
-          { name: 'Iron Cloud', stages: [5, 4] },
-          { name: 'Obsidian Drift', stages: [4, 4] },
-        ],
-      },
-      {
-        name: 'Nyx Anchor',
-        nebulas: [
-          { name: 'Frost Spire', stages: [5, 4] },
-          { name: 'Rift Choir', stages: [4, 4] },
-        ],
-      },
-      {
-        name: 'Hydra Bend',
-        nebulas: [
-          { name: 'Storm Shelf', stages: [4, 4] },
-          { name: 'Echo Basin', stages: [4, 4] },
-        ],
-      },
-    ],
-  },
-  {
-    id: 4,
-    systems: [
-      {
-        name: 'Phoenix Forge',
-        nebulas: [
-          { name: 'Solar Anvil', stages: [5, 5] },
-          { name: 'Ember Lattice', stages: [5, 4] },
-        ],
-      },
-      {
-        name: 'Quasar Spine',
-        nebulas: [
-          { name: 'Pulse Canyon', stages: [5, 5] },
-          { name: 'Photon Reef', stages: [5, 4] },
-        ],
-      },
-      {
-        name: 'Helix Crown',
-        nebulas: [
-          { name: 'Crown Flare', stages: [5, 4] },
-          { name: 'Apex Dust', stages: [4, 4] },
-        ],
-      },
-    ],
-  },
-  {
-    id: 5,
-    systems: [
-      {
-        name: 'Singularity',
-        nebulas: [
-          { name: 'Accretion Veil', stages: [5, 5] },
-          { name: 'Photon Sphere', stages: [5, 5] },
-        ],
-      },
-      {
-        name: 'Abyss Meridian',
-        nebulas: [
-          { name: 'Dark Shear', stages: [5, 5] },
-          { name: 'Null Wake', stages: [5, 5] },
-        ],
-      },
-      {
-        name: 'Omega Gate',
-        nebulas: [
-          { name: 'Last Light', stages: [5, 5] },
-          { name: 'Horizon Heart', stages: [5, 5] },
-        ],
-      },
-    ],
-  },
-]
+import { SECTORS, TREE } from './sectors'
 
 function slug(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
@@ -180,21 +37,24 @@ function makeObjective(rand: () => number, sectorId: number, id: number): Object
   if (id <= 10) {
     return { type: 'jelly', remaining: id <= 3 ? 8 : id <= 6 ? 10 : 12 }
   }
-  const roll = id % 3
+  const roll = id % 4
   if (roll === 0) {
-    return { type: 'jelly', remaining: 12 + sectorId * 8 + Math.floor(rand() * 8) }
+    return { type: 'jelly', remaining: 12 + sectorId * 7 + Math.floor(rand() * 8) }
   }
   if (roll === 1) {
     return { type: 'ingredient', remaining: 2 + Math.floor(sectorId / 2) + (rand() > 0.45 ? 1 : 0) }
   }
-  const color = STAR_COLORS[Math.floor(rand() * Math.min(6, 4 + sectorId))] as StarColor
-  if (rand() > 0.55) {
+  if (roll === 2) {
     return {
       type: 'order',
-      orders: [{ special: 'wrapped', count: 1 + Math.floor(sectorId / 2) }],
+      orders: [
+        { special: 'wrapped', count: 1 + Math.floor(sectorId / 2) },
+        { special: 'striped-h', count: 1 + Math.floor(sectorId / 3) },
+      ],
     }
   }
-  return { type: 'order', orders: [{ color, count: 12 + sectorId * 5 }] }
+  const color = STAR_COLORS[Math.floor(rand() * Math.min(6, 4 + sectorId))] as StarColor
+  return { type: 'order', orders: [{ color, count: 14 + sectorId * 6 }] }
 }
 
 /** Distinct geometries so later nebulas/systems are not the same scatter with new IDs. */
@@ -209,7 +69,7 @@ function patternFrosting(
     if (i < 0 || i >= BOARD_SIZE || avoid.has(i) || wanted.includes(i)) return
     wanted.push(i)
   }
-  const kind = pattern % 10
+  const kind = pattern % 14
   const inner = BOARD_WIDTH - 2
   if (kind === 0) {
     const col = 1 + (Math.floor(rand() * 3) % 3)
@@ -251,11 +111,37 @@ function patternFrosting(
     for (let i = 0; i < BOARD_WIDTH; i++) tryAdd(BOARD_WIDTH - 1 - i + i * BOARD_WIDTH)
     for (let x = 2; x < BOARD_WIDTH - 2; x++) tryAdd(x + (BOARD_HEIGHT - 1) * BOARD_WIDTH)
   } else if (kind === 8) {
-    for (let y = 1; y < BOARD_HEIGHT - 1; y++) {
-      for (let x = 1; x < BOARD_WIDTH - 1; x++) {
-        if (x === 1 || x === BOARD_WIDTH - 2 || y === 1 || y === BOARD_HEIGHT - 2) {
-          tryAdd(x + y * BOARD_WIDTH)
-        }
+    // Hourglass Nexus
+    for (let y = 0; y < BOARD_HEIGHT; y++) {
+      const span = Math.abs(y - Math.floor(BOARD_HEIGHT / 2))
+      tryAdd(span + y * BOARD_WIDTH)
+      tryAdd(BOARD_WIDTH - 1 - span + y * BOARD_WIDTH)
+    }
+  } else if (kind === 9) {
+    // Diamond Core
+    const cx = Math.floor(BOARD_WIDTH / 2)
+    const cy = Math.floor(BOARD_HEIGHT / 2)
+    for (let r = 0; r <= 3; r++) {
+      tryAdd(cx + r + (cy - (3 - r)) * BOARD_WIDTH)
+      tryAdd(cx - r + (cy - (3 - r)) * BOARD_WIDTH)
+      tryAdd(cx + r + (cy + (3 - r)) * BOARD_WIDTH)
+      tryAdd(cx - r + (cy + (3 - r)) * BOARD_WIDTH)
+    }
+  } else if (kind === 10) {
+    // Corner Fortresses
+    for (let y = 0; y < 2; y++) {
+      for (let x = 0; x < 2; x++) {
+        tryAdd(x + y * BOARD_WIDTH)
+        tryAdd(BOARD_WIDTH - 1 - x + y * BOARD_WIDTH)
+        tryAdd(x + (BOARD_HEIGHT - 1 - y) * BOARD_WIDTH)
+        tryAdd(BOARD_WIDTH - 1 - x + (BOARD_HEIGHT - 1 - y) * BOARD_WIDTH)
+      }
+    }
+  } else if (kind === 11) {
+    // Checkerboard Matrix
+    for (let y = 1; y < BOARD_HEIGHT - 1; y += 2) {
+      for (let x = 1; x < BOARD_WIDTH - 1; x += 2) {
+        tryAdd(x + y * BOARD_WIDTH)
       }
     }
   } else {
@@ -427,8 +313,8 @@ export function generateCampaign(): CampaignNode {
     }
   }
 
-  if (levels.length !== 250) {
-    throw new Error(`Campaign must be 250 levels, got ${levels.length}`)
+  if (levels.length !== 330) {
+    throw new Error(`Campaign must be 330 levels, got ${levels.length}`)
   }
 
   return { sectors: SECTORS, systems, nebulas, stages, levels }

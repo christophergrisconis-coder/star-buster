@@ -38,12 +38,19 @@ export const SECTOR_DIFFICULTY = {
     minMoves: 10,
     frostingHp: 3,
   },
+  6: {
+    timeLimit: 48,
+    cometTailMs: 1800,
+    colorCount: 6,
+    minMoves: 9,
+    frostingHp: 3,
+  },
 } as const
 
 export type SectorId = keyof typeof SECTOR_DIFFICULTY
 
 export function sectorDifficulty(sectorId: number) {
-  const id = Math.min(5, Math.max(1, sectorId)) as SectorId
+  const id = Math.min(6, Math.max(1, sectorId)) as SectorId
   return SECTOR_DIFFICULTY[id]
 }
 

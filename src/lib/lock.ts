@@ -4,20 +4,22 @@ import type { ProgressBlob } from './progress'
 
 /** Next sequential campaign level a signed-in pilot may enter (1–250). */
 export function nextSequentialLevel(progress: ProgressBlob): number {
+  const maxLevels = LEVELS.length || 310
   const completed = Object.values(progress.levels)
     .filter((l) => l.completed)
     .map((l) => l.levelId)
   const max = completed.length ? Math.max(...completed) : 0
-  return Math.min(250, Math.max(1, max + 1))
+  return Math.min(maxLevels, Math.max(1, max + 1))
 }
 
 export function isAuthedPilot(progress: ProgressBlob): boolean {
   return progress.guest === false
 }
 
-/** Guests may freely fly 1–3. Signed-in pilots follow the sequential 250-level lock. */
+/** Guests may freely fly 1–3. Signed-in pilots follow the sequential level lock. */
 export function isLevelPlayable(levelId: number, progress: ProgressBlob): boolean {
-  if (!Number.isFinite(levelId) || levelId < 1 || levelId > 250) return false
+  const maxLevels = LEVELS.length || 310
+  if (!Number.isFinite(levelId) || levelId < 1 || levelId > maxLevels) return false
   if (progress.admin) return true
   if (!isAuthedPilot(progress)) return guestUnlocked(levelId)
   return levelId <= nextSequentialLevel(progress)

@@ -33,6 +33,180 @@ export interface StageDef {
   levelIds: number[]
 }
 
+export interface NebulaSpec {
+  name: string
+  stages: number[]
+}
+
+export interface SystemSpec {
+  name: string
+  nebulas: NebulaSpec[]
+}
+
+export interface SectorSpec {
+  id: number
+  systems: SystemSpec[]
+}
+
+export const TREE: SectorSpec[] = [
+  {
+    id: 1,
+    systems: [
+      {
+        name: 'Helios Drift',
+        nebulas: [
+          { name: 'Amber Veil', stages: [5, 5] },
+          { name: 'Coral Drift', stages: [5, 5] },
+        ],
+      },
+      {
+        name: 'Lyra Wake',
+        nebulas: [
+          { name: 'Violet Mist', stages: [5, 5] },
+          { name: 'Ion Shoal', stages: [5, 5] },
+        ],
+      },
+    ],
+  },
+  {
+    id: 2,
+    systems: [
+      {
+        name: 'Kepler Ring',
+        nebulas: [
+          { name: 'Dust Choir', stages: [4, 4] },
+          { name: 'Glass Halo', stages: [3, 4] },
+        ],
+      },
+      {
+        name: 'Vespera',
+        nebulas: [
+          { name: 'Crimson Arc', stages: [4, 4] },
+          { name: 'Pale Corona', stages: [3, 4] },
+        ],
+      },
+      {
+        name: 'Astra Current',
+        nebulas: [
+          { name: 'Blue Fold', stages: [4, 4] },
+          { name: 'Silent Wake', stages: [3, 4] },
+        ],
+      },
+    ],
+  },
+  {
+    id: 3,
+    systems: [
+      {
+        name: 'Titan Well',
+        nebulas: [
+          { name: 'Iron Cloud', stages: [5, 4] },
+          { name: 'Obsidian Drift', stages: [4, 4] },
+        ],
+      },
+      {
+        name: 'Nyx Anchor',
+        nebulas: [
+          { name: 'Frost Spire', stages: [5, 4] },
+          { name: 'Rift Choir', stages: [4, 4] },
+        ],
+      },
+      {
+        name: 'Hydra Bend',
+        nebulas: [
+          { name: 'Storm Shelf', stages: [4, 4] },
+          { name: 'Echo Basin', stages: [4, 4] },
+        ],
+      },
+    ],
+  },
+  {
+    id: 4,
+    systems: [
+      {
+        name: 'Phoenix Forge',
+        nebulas: [
+          { name: 'Solar Anvil', stages: [5, 5] },
+          { name: 'Ember Lattice', stages: [5, 4] },
+        ],
+      },
+      {
+        name: 'Quasar Spine',
+        nebulas: [
+          { name: 'Pulse Canyon', stages: [5, 5] },
+          { name: 'Photon Reef', stages: [5, 4] },
+        ],
+      },
+      {
+        name: 'Helix Crown',
+        nebulas: [
+          { name: 'Crown Flare', stages: [5, 4] },
+          { name: 'Apex Dust', stages: [4, 4] },
+        ],
+      },
+    ],
+  },
+  {
+    id: 5,
+    systems: [
+      {
+        name: 'Singularity',
+        nebulas: [
+          { name: 'Accretion Veil', stages: [5, 5] },
+          { name: 'Photon Sphere', stages: [5, 5] },
+        ],
+      },
+      {
+        name: 'Abyss Meridian',
+        nebulas: [
+          { name: 'Dark Shear', stages: [5, 5] },
+          { name: 'Null Wake', stages: [5, 5] },
+        ],
+      },
+      {
+        name: 'Omega Gate',
+        nebulas: [
+          { name: 'Last Light', stages: [5, 5] },
+          { name: 'Horizon Heart', stages: [5, 5] },
+        ],
+      },
+    ],
+  },
+  {
+    id: 6,
+    systems: [
+      {
+        name: 'Quantum Rift',
+        nebulas: [
+          { name: 'Chronos Veil', stages: [5, 5] },
+          { name: 'Tesseract Fold', stages: [5, 5] },
+        ],
+      },
+      {
+        name: 'Dark Matter Core',
+        nebulas: [
+          { name: 'Graviton Spire', stages: [5, 5] },
+          { name: 'Antimatter Shelf', stages: [5, 5] },
+        ],
+      },
+      {
+        name: 'Starlight Nexus',
+        nebulas: [
+          { name: 'Prism Horizon', stages: [5, 5] },
+          { name: 'Genesis Core', stages: [5, 5] },
+        ],
+      },
+      {
+        name: 'Eternal Zenith',
+        nebulas: [
+          { name: 'Infinity Apex', stages: [5, 5] },
+          { name: 'Cosmic Sovereign', stages: [5, 5] },
+        ],
+      },
+    ],
+  },
+]
+
 export const SECTORS: SectorDef[] = [
   {
     id: 1,
@@ -61,7 +235,7 @@ export const SECTORS: SectorDef[] = [
     color: '#c4b5fd',
     rewardCap: 110,
     colorCount: 6,
-    levelCount: 50,
+    levelCount: 51,
     systemCount: 3,
   },
   {
@@ -71,8 +245,8 @@ export const SECTORS: SectorDef[] = [
     color: '#f0abfc',
     rewardCap: 160,
     colorCount: 6,
-    levelCount: 55,
-    systemCount: 4,
+    levelCount: 54,
+    systemCount: 3,
   },
   {
     id: 5,
@@ -82,45 +256,22 @@ export const SECTORS: SectorDef[] = [
     rewardCap: 220,
     colorCount: 6,
     levelCount: 60,
+    systemCount: 3,
+  },
+  {
+    id: 6,
+    name: 'Cosmic Singularity',
+    tagline: 'Infinite gravity and quantum rifts',
+    color: '#38bdf8',
+    rewardCap: 300,
+    colorCount: 6,
+    levelCount: 80,
     systemCount: 4,
   },
 ]
 
-export const SYSTEM_NAMES = [
-  ['Helios Veil', 'Lyra Drift'],
-  ['Kepler Wake', 'Vela Cross', 'Io Burn'],
-  ['Titan Well', 'Rigel Fuse', 'Nyx Anchor'],
-  ['Pulsar Crown', 'Atlas Flare', 'Vespera', 'Hyperion Gate'],
-  ['Singularity', 'Abyss Halo', 'Omega Fold', 'Horizon Deep'],
-]
-
-export const NEBULA_NAMES = [
-  'Amber Cirrus',
-  'Cobalt Bloom',
-  'Violet Wake',
-  'Ember Strait',
-  'Ivory Spiral',
-  'Sapphire Rift',
-  'Crimson Halo',
-  'Jade Stream',
-  'Obsidian Veil',
-  'Aurora Knot',
-  'Pearl Current',
-  'Ruby Meridian',
-  'Indigo Shelf',
-  'Solar Bramble',
-  'Ghost Quasar',
-  'Nacre Ring',
-  'Storm Lattice',
-  'Gilded Abyss',
-  'Ion Orchard',
-  'Midnight Prism',
-]
-
-function splitEven(total: number, parts: number): number[] {
-  const base = Math.floor(total / parts)
-  const rem = total % parts
-  return Array.from({ length: parts }, (_, i) => base + (i < rem ? 1 : 0))
+function slug(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
 }
 
 export interface Universe {
@@ -134,38 +285,31 @@ export function buildUniverse(): Universe {
   const systems: SolarSystemDef[] = []
   const nebulas: NebulaDef[] = []
   const stages: StageDef[] = []
+
   let levelCursor = 1
-  let nebulaName = 0
 
-  for (const sector of SECTORS) {
-    const names = SYSTEM_NAMES[sector.id - 1]!
-    const perSystem = splitEven(sector.levelCount, sector.systemCount)
-    const nebulaCounts = sector.id === 1 ? [2, 2] : splitEven(Math.max(sector.systemCount + 1, 3), sector.systemCount)
-
-    perSystem.forEach((sysLevels, si) => {
-      const systemId = `s${sector.id}-${si + 1}`
-      const nebulaPer = nebulaCounts[si] ?? 2
-      const nebulaLevelCounts = splitEven(sysLevels, nebulaPer)
+  for (const sector of TREE) {
+    for (const [si, system] of sector.systems.entries()) {
+      const systemId = `${sector.id}-${slug(system.name)}`
       const nebulaIds: string[] = []
 
-      nebulaLevelCounts.forEach((nLevels, ni) => {
-        const nebulaId = `${systemId}-n${ni + 1}`
+      for (const [ni, nebula] of system.nebulas.entries()) {
+        const nebulaId = `${systemId}-${slug(nebula.name)}`
         nebulaIds.push(nebulaId)
-        const stageCount = nLevels <= 6 ? 2 : nLevels <= 12 ? 3 : 4
-        const stageSizes = splitEven(nLevels, stageCount)
         const stageIds: string[] = []
 
-        stageSizes.forEach((sz, sti) => {
-          const stageId = `${nebulaId}-g${sti + 1}`
+        nebula.stages.forEach((count, sti) => {
+          const stageId = `${nebulaId}-stage-${sti + 1}`
           stageIds.push(stageId)
           const levelIds: number[] = []
-          for (let k = 0; k < sz; k++) {
+          for (let n = 0; n < count; n++) {
             levelIds.push(levelCursor++)
           }
+
           stages.push({
             id: stageId,
             nebulaId,
-            name: `Orb ${sti + 1}`,
+            name: `Orbit ${sti + 1}`,
             orbHue: (sector.id * 48 + ni * 22 + sti * 14) % 360,
             levelIds,
           })
@@ -175,23 +319,23 @@ export function buildUniverse(): Universe {
           id: nebulaId,
           systemId,
           sectorId: sector.id,
-          name: NEBULA_NAMES[nebulaName++ % NEBULA_NAMES.length]!,
+          name: nebula.name,
           stageIds,
         })
-      })
+      }
 
       systems.push({
         id: systemId,
         sectorId: sector.id,
-        name: names[si] ?? `System ${si + 1}`,
+        name: system.name,
         planet: ['ember', 'ice', 'gas', 'ring', 'lava'][si % 5]!,
         nebulaIds,
       })
-    })
+    }
   }
 
-  if (levelCursor - 1 !== 250) {
-    throw new Error(`Universe must total 250 levels, got ${levelCursor - 1}`)
+  if (levelCursor - 1 !== 330) {
+    throw new Error(`Universe must total 330 levels, got ${levelCursor - 1}`)
   }
 
   return { sectors: SECTORS, systems, nebulas, stages }

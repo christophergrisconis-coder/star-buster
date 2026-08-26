@@ -162,7 +162,7 @@ export function generateLevel(id: number): LevelConfig {
   }
 }
 
-export const LEVELS: LevelConfig[] = Array.from({ length: 250 }, (_, i) => generateLevel(i + 1))
+export const LEVELS: LevelConfig[] = Array.from({ length: 330 }, (_, i) => generateLevel(i + 1))
 
 export function getLevel(id: number): LevelConfig | undefined {
   return LEVELS[id - 1]
@@ -172,6 +172,6 @@ export function guestUnlocked(id: number): boolean {
   return id >= 1 && id <= 3
 }
 
-if (LEVELS.length !== 250) {
-  throw new Error('Expected 250 levels')
+if (LEVELS.length !== 330) {
+  throw new Error('Expected 330 levels')
 }

@@ -159,14 +159,14 @@ export function unlockAdminVoyage() {
 
 export function highestUnlocked(): number {
   const p = getProgress()
-  if (p.admin || isAdminPilot()) return 250
+  if (p.admin || isAdminPilot()) return 999
   const next = nextSequentialLevel(p)
   if (p.guest) return Math.max(next, 3)
   return next
 }
 
 export function canPlay(levelId: number, _authed?: boolean): boolean {
-  if (isAdminPilot()) return Number.isFinite(levelId) && levelId >= 1 && levelId <= 250
+  if (isAdminPilot()) return Number.isFinite(levelId) && levelId >= 1
   return isLevelPlayable(levelId, getProgress())
 }
 

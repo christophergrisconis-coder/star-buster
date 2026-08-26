@@ -1,7 +1,7 @@
 import type { LevelConfig } from '~/engine/types'
 import { CAMPAIGN } from './campaign'
 
-export type ChallengeId = 'comet-tail' | 'nova-combo' | 'time-bank' | 'no-spread' | 'no-hints'
+export type ChallengeId = 'comet-tail' | 'nova-combo' | 'time-bank' | 'no-spread' | 'no-hints' | 'speed-run' | 'cascade-surge'
 
 export type Challenge = {
   id: ChallengeId
@@ -37,6 +37,8 @@ export type VariantKind =
   | 'bomb-hail'
   | 'naked-sky'
   | 'comet-oath'
+  | 'hyper-speed'
+  | 'frost-shatter'
 
 export type NebulaChallenge = {
   id: string
@@ -99,6 +101,20 @@ const VARIANT_META: Record<
     badge: 'Comet Oath',
     modifiers: { cometTailMin: 5 },
   },
+  'hyper-speed': {
+    title: 'Hyperdrive',
+    blurb: 'Supercharged countdown. Speed and reflex test.',
+    risk: 5,
+    badge: 'Hyperdrive',
+    modifiers: { timeMul: 0.4 },
+  },
+  'frost-shatter': {
+    title: 'Asteroid crush',
+    blurb: 'Ultra-dense asteroid fields. Shatter through the crust.',
+    risk: 4,
+    badge: 'Asteroid Crusher',
+    modifiers: { movesDelta: -4 },
+  },
 }
 
 const HIGH_KINDS = Object.keys(VARIANT_META) as Array<Exclude<VariantKind, 'clear'>>
@@ -146,9 +162,21 @@ export function challengesForLevel(level: LevelConfig): Challenge[] {
       blurb: 'Complete orders without calling the hint coach',
       stardust: 14 + sector * 3,
     },
+    'speed-run': {
+      id: 'speed-run',
+      title: 'Hyperdrive clearance',
+      blurb: 'Clear the entire orbit in under 35 seconds',
+      stardust: 25 + sector * 5,
+    },
+    'cascade-surge': {
+      id: 'cascade-surge',
+      title: 'Cascade surge',
+      blurb: 'Score with a 4x or higher chain cascade',
+      stardust: 24 + sector * 4,
+    },
   }
 
-  const rotation: ChallengeId[] = ['comet-tail', 'nova-combo', 'time-bank', 'no-spread', 'no-hints']
+  const rotation: ChallengeId[] = ['comet-tail', 'nova-combo', 'time-bank', 'no-spread', 'no-hints', 'speed-run', 'cascade-surge']
   const primary = rotation[level.id % rotation.length]!
   const picked = new Set<ChallengeId>([primary])
   if (level.id > 10) {
@@ -180,6 +208,8 @@ export function evaluateChallenge(challenge: Challenge, level: LevelConfig, run:
   if (challenge.id === 'time-bank') return run.timeLeft >= timeBankSeconds(level.sectorId)
   if (challenge.id === 'no-spread') return !run.chocolateSpread
   if (challenge.id === 'no-hints') return !run.hintUsed
+  if (challenge.id === 'speed-run') return run.timeLeft >= (level.timeLimit - 35)
+  if (challenge.id === 'cascade-surge') return run.peakCometTail >= 4
   return false
 }
 
@@ -188,6 +218,8 @@ export function challengeToast(id: ChallengeId): string {
   if (id === 'nova-combo') return 'Nova strike logged in the ion wake'
   if (id === 'time-bank') return 'Orbit clock to spare — meteor trail bonus'
   if (id === 'no-spread') return 'Chocolate contained. The nebula holds.'
+  if (id === 'speed-run') return 'Hyperdrive clearance recorded!'
+  if (id === 'cascade-surge') return 'Cascade surge triggered in the atmosphere!'
   return 'Unaided collection — stellar navigation'
 }
 

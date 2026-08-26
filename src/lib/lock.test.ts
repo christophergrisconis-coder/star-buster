@@ -47,8 +47,8 @@ describe('progress lock', () => {
   it('opens the full voyage for admin pilots', () => {
     const admin: ProgressBlob = { levels: {}, guest: false, admin: true }
     expect(isLevelPlayable(1, admin)).toBe(true)
-    expect(isLevelPlayable(250, admin)).toBe(true)
-    expect(isSectorUnlocked(5, admin)).toBe(true)
+    expect(isLevelPlayable(330, admin)).toBe(true)
+    expect(isSectorUnlocked(6, admin)).toBe(true)
     expect(isNebulaUnlocked(CAMPAIGN.nebulas.at(-1)!.id, admin)).toBe(true)
   })
 

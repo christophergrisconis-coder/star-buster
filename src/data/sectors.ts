@@ -1,6 +1,7 @@
 export {
   SECTORS,
   UNIVERSE,
+  TREE,
   nebulaById,
   sectorById,
   stageById,
@@ -9,4 +10,7 @@ export {
   type SectorDef,
   type SolarSystemDef,
   type StageDef,
+  type SectorSpec,
+  type SystemSpec,
+  type NebulaSpec,
 } from './universe'
