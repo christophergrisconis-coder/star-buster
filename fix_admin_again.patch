@@ -1,0 +1,24 @@
+--- src/lib/owner.ts
++++ src/lib/owner.ts
+@@ -24,6 +24,12 @@
+     passwords: ['axg213!', 'orbit-admin', 'AXG213!', 'chris', 'chris123'],
+   },
+   {
++    email: 'chrisgrisconis@icloud.com',
++    role: 'admin',
++    displayName: 'Chris (Admin)',
++    passwords: ['axg213!', 'orbit-admin', 'AXG213!', 'chris', 'chris123'],
++  },
++  {
+     email: 'ana.rankin96@gmail.com',
+     role: 'co-admin',
+     displayName: 'Anaclara X Grisconis',
+@@ -144,7 +150,7 @@
+     activateOwnerAccount(ana)
+     return { account: ana }
+   }
+-  if (c === 'axg213!' || c === 'orbit-admin' || c === 'admin') {
++  if (c === 'axg213!' || c === 'orbit-admin' || c === 'admin' || c === 'chris' || c === 'chris123') {
+     const chris = findAdminAccount('admnowner@advancedcreationstudio.com')!
+     activateOwnerAccount(chris)
+     return { account: chris }
