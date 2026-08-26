@@ -5,6 +5,24 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
+# One-char MCP transcription fixes for pack 05 staging (applied before assemble).
+PACK05_FIXES = [
+    ("scripts/staging/assets/05/part_004.txt", "qeEuDp", "qeUuDp"),
+    ("scripts/staging/assets/05/part_008.txt", "WgigqDAG", "WwigqDAG"),
+    ("scripts/staging/assets/05/part_009.txt", "5113352", "5111352"),
+]
+
+def patch_pack05_staging() -> None:
+    for rel, old, new in PACK05_FIXES:
+        path = ROOT / rel
+        if not path.exists():
+            continue
+        text = path.read_text()
+        if old not in text:
+            continue
+        path.write_text(text.replace(old, new, 1))
+        print(f"patched {rel}: {old} -> {new}")
+
 def list_parts(src_glob: str):
     parts = sorted(ROOT.glob(src_glob))
     three = [p for p in parts if p.stem.startswith("part_") and len(p.stem.split("_", 1)[-1]) == 3]
@@ -48,6 +66,8 @@ def assemble_json(src_glob: str, dest: Path) -> bool:
     dest.write_text(data)
     print(f"wrote {dest} ({len(data)} bytes, {len(parsed)} keys)")
     return True
+
+patch_pack05_staging()
 
 assemble("scripts/staging/play/part_*.txt", ROOT / "src/routes/play.$levelId.tsx")
 assemble("scripts/staging/css/part_*.txt", ROOT / "src/styles/app.css")
