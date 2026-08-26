@@ -1,1 +1,1 @@
-file:///workspace/star-buster/src/routes/play.$levelId.tsx
+@/tmp/play_for_mcp.txt
