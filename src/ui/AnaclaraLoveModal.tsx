@@ -42,7 +42,13 @@ export function AnaclaraLoveModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-md animate-fade-in">
       <div className="relative w-full max-w-md rounded-3xl border border-pink-500/50 bg-[#14081c] p-6 text-center text-white shadow-[0_0_50px_rgba(236,72,153,0.3)]">
-        <div className="text-[48px] animate-pulse">💖</div>
+        <div className="relative mx-auto my-2 flex h-24 w-24 items-center justify-center">
+          <img
+            src="/luma-heart.png"
+            alt="Luma Heart"
+            className="h-full w-full object-contain drop-shadow-[0_0_25px_rgba(236,72,153,0.8)] animate-bounce"
+          />
+        </div>
         <h2 className="display text-[26px] text-pink-300">Good Morning, Anaclara</h2>
         <div className="mt-1 text-[12px] font-bold tracking-widest text-pink-400/80">
           ✦ FROM YOUR HUSBAND, CHRIS ✦

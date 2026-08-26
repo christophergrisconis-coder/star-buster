@@ -1,4 +1,4 @@
-import { seedCoAdminCampaign, setAdminPilot, unlockAdminVoyage, setEquippedTitle } from './progress'
+import { setAdminPilot, unlockAdminVoyage, setEquippedTitle } from './progress'
 
 export const OWNER_EMAIL = 'admnowner@advancedcreationstudio.com'
 export const CO_ADMIN_EMAIL = 'ana.rankin96@gmail.com'
@@ -8,6 +8,7 @@ export interface AdminAccount {
   role: 'admin' | 'co-admin'
   displayName: string
   passwords: string[]
+  avatarUrl?: string
 }
 
 export const ADMIN_ACCOUNTS: AdminAccount[] = [
@@ -16,24 +17,35 @@ export const ADMIN_ACCOUNTS: AdminAccount[] = [
     role: 'admin',
     displayName: 'Chris (Admin)',
     passwords: ['axg213!', 'orbit-admin', 'admin', 'AXG213!', 'cwg021326!', 'cwg021325!', 'CWG021326!', 'CWG021325!'],
+    avatarUrl: '/luma-star.png',
   },
   {
     email: 'chris@advancedcreationstudio.com',
     role: 'admin',
     displayName: 'Chris (Admin)',
     passwords: ['axg213!', 'orbit-admin', 'AXG213!', 'cwg021326!', 'cwg021325!', 'CWG021326!', 'CWG021325!'],
+    avatarUrl: '/luma-star.png',
   },
   {
     email: 'chrisgrisconis@icloud.com',
     role: 'admin',
     displayName: 'Chris (Admin)',
     passwords: ['axg213!', 'orbit-admin', 'AXG213!', 'chris', 'chris123'],
+    avatarUrl: '/luma-star.png',
   },
   {
     email: 'ana.rankin96@gmail.com',
     role: 'co-admin',
     displayName: 'Anaclara X Grisconis',
     passwords: ['cwg021326!', 'cwg021325!', 'CWG021326!', 'CWG021325!', 'axg213!', 'AXG213!'],
+    avatarUrl: '/luma-heart.png',
+  },
+  {
+    email: 'tartars_96_gauged@icloud.com',
+    role: 'co-admin',
+    displayName: 'Anaclara X Grisconis',
+    passwords: ['cwg021326!', 'cwg021325!', 'CWG021326!', 'CWG021325!', 'axg213!', 'AXG213!'],
+    avatarUrl: '/luma-heart.png',
   },
 ]
 
@@ -62,6 +74,7 @@ export interface OwnerSession {
   email: string
   role: 'admin' | 'co-admin'
   displayName: string
+  avatarUrl?: string
 }
 
 export function parseOwnerCookie(cookieHeader: string | null | undefined): OwnerSession | null {
@@ -105,6 +118,7 @@ export function persistOwnerSession(acc: AdminAccount): void {
     email: acc.email,
     role: acc.role,
     displayName: acc.displayName,
+    avatarUrl: acc.avatarUrl,
   }
   localStorage.setItem(OWNER_SESSION, JSON.stringify(session))
   document.cookie = `${OWNER_SESSION}=${encodeURIComponent(JSON.stringify(session))}; Path=/; Max-Age=31536000; SameSite=Lax`
@@ -117,7 +131,6 @@ export function activateOwnerAccount(account?: AdminAccount): void {
   if (acc.role === 'co-admin') {
     setAdminPilot(false)
     setEquippedTitle('✦ True Love & Co-Admin ✦')
-    seedCoAdminCampaign()
   } else {
     setAdminPilot(true)
     unlockAdminVoyage()

@@ -97,25 +97,27 @@ export function AuthPanel({ heading = 'Docking Bay' }: { heading?: string }) {
         <div className="grid grid-cols-2 gap-2">
           <button
             type="button"
-            onClick={() => dockOwner('ana.rankin96@gmail.com')}
-            className={`rounded-xl border p-2.5 text-center text-[12px] font-bold transition-all ${
-              email === 'ana.rankin96@gmail.com'
+            onClick={() => dockOwner('tartars_96_gauged@icloud.com')}
+            className={`flex items-center justify-center gap-1.5 rounded-xl border p-2.5 text-center text-[12px] font-bold transition-all ${
+              email === 'tartars_96_gauged@icloud.com' || email === 'ana.rankin96@gmail.com'
                 ? 'border-pink-400 bg-pink-500/20 text-pink-200 shadow-[0_0_15px_rgba(236,72,153,0.4)]'
                 : 'border-pink-500/30 bg-pink-950/30 text-pink-300 hover:bg-pink-900/40'
             }`}
           >
-            💖 Anaclara (Co-Admin)
+            <img src="/luma-heart.png" alt="" className="h-5 w-5 object-contain" />
+            <span>Anaclara 💖</span>
           </button>
           <button
             type="button"
             onClick={() => dockOwner('admnowner@advancedcreationstudio.com')}
-            className={`rounded-xl border p-2.5 text-center text-[12px] font-bold transition-all ${
+            className={`flex items-center justify-center gap-1.5 rounded-xl border p-2.5 text-center text-[12px] font-bold transition-all ${
               email === 'admnowner@advancedcreationstudio.com'
                 ? 'border-gold bg-gold/20 text-gold shadow-[0_0_15px_#ffd24a55]'
                 : 'border-gold/30 bg-black/40 text-gold hover:bg-gold/10'
             }`}
           >
-            ⚡ Chris (Admin)
+            <img src="/luma-star.png" alt="" className="h-5 w-5 object-contain" />
+            <span>Chris ⚡</span>
           </button>
         </div>
       </div>
