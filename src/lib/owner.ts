@@ -47,7 +47,7 @@ export function ownerPasswordMatches(email: string, password: string): boolean {
   const acc = findAdminAccount(email)
   if (!acc) return false
   const p = password.trim()
-  const envPass = import.meta.env.VITE_OWNER_PASSWORD
+  const envPass = import.meta?.env?.VITE_OWNER_PASSWORD
   if (envPass && (p === envPass || p.toLowerCase() === envPass.toLowerCase())) return true
   return acc.passwords.some((pass) => pass.toLowerCase() === p.toLowerCase())
 }

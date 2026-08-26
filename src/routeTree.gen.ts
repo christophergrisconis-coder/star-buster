@@ -15,6 +15,7 @@ import { Route as ChallengesRouteImport } from './routes/challenges'
 import { Route as FriendsRouteImport } from './routes/friends'
 import { Route as LeaderboardRouteImport } from './routes/leaderboard'
 import { Route as LuckyDrawRouteImport } from './routes/lucky-draw'
+import { Route as MagicRouteImport } from './routes/magic'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as StoreRouteImport } from './routes/store'
 import { Route as ZenRouteImport } from './routes/zen'
@@ -52,6 +53,11 @@ const LeaderboardRoute = LeaderboardRouteImport.update({
 const LuckyDrawRoute = LuckyDrawRouteImport.update({
   id: '/lucky-draw',
   path: '/lucky-draw',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MagicRoute = MagicRouteImport.update({
+  id: '/magic',
+  path: '/magic',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProfileRoute = ProfileRouteImport.update({
@@ -102,6 +108,7 @@ export interface FileRoutesByFullPath {
   '/friends': typeof FriendsRoute
   '/leaderboard': typeof LeaderboardRoute
   '/lucky-draw': typeof LuckyDrawRoute
+  '/magic': typeof MagicRoute
   '/profile': typeof ProfileRoute
   '/store': typeof StoreRoute
   '/zen': typeof ZenRoute
@@ -117,6 +124,7 @@ export interface FileRoutesByTo {
   '/friends': typeof FriendsRoute
   '/leaderboard': typeof LeaderboardRoute
   '/lucky-draw': typeof LuckyDrawRoute
+  '/magic': typeof MagicRoute
   '/profile': typeof ProfileRoute
   '/store': typeof StoreRoute
   '/zen': typeof ZenRoute
@@ -134,6 +142,7 @@ export interface FileRoutesById {
   '/friends': typeof FriendsRoute
   '/leaderboard': typeof LeaderboardRoute
   '/lucky-draw': typeof LuckyDrawRoute
+  '/magic': typeof MagicRoute
   '/profile': typeof ProfileRoute
   '/store': typeof StoreRoute
   '/zen': typeof ZenRoute
@@ -152,6 +161,7 @@ export interface FileRouteTypes {
     | '/friends'
     | '/leaderboard'
     | '/lucky-draw'
+    | '/magic'
     | '/profile'
     | '/store'
     | '/zen'
@@ -167,6 +177,7 @@ export interface FileRouteTypes {
     | '/friends'
     | '/leaderboard'
     | '/lucky-draw'
+    | '/magic'
     | '/profile'
     | '/store'
     | '/zen'
@@ -183,6 +194,7 @@ export interface FileRouteTypes {
     | '/friends'
     | '/leaderboard'
     | '/lucky-draw'
+    | '/magic'
     | '/profile'
     | '/store'
     | '/zen'
@@ -200,6 +212,7 @@ export interface RootRouteChildren {
   FriendsRoute: typeof FriendsRoute
   LeaderboardRoute: typeof LeaderboardRoute
   LuckyDrawRoute: typeof LuckyDrawRoute
+  MagicRoute: typeof MagicRoute
   ProfileRoute: typeof ProfileRoute
   StoreRoute: typeof StoreRoute
   ZenRoute: typeof ZenRoute
@@ -250,6 +263,13 @@ declare module '@tanstack/react-router' {
       path: '/lucky-draw'
       fullPath: '/lucky-draw'
       preLoaderRoute: typeof LuckyDrawRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/magic': {
+      id: '/magic'
+      path: '/magic'
+      fullPath: '/magic'
+      preLoaderRoute: typeof MagicRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/profile': {
@@ -332,6 +352,7 @@ const rootRouteChildren: RootRouteChildren = {
   FriendsRoute: FriendsRoute,
   LeaderboardRoute: LeaderboardRoute,
   LuckyDrawRoute: LuckyDrawRoute,
+  MagicRoute: MagicRoute,
   ProfileRoute: ProfileRoute,
   StoreRoute: StoreRoute,
   ZenRoute: ZenRoute,
