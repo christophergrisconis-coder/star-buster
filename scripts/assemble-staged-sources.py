@@ -5,8 +5,15 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
-def join_parts(src_glob: str):
+def list_parts(src_glob: str):
     parts = sorted(ROOT.glob(src_glob))
+    three = [p for p in parts if p.stem.startswith("part_") and len(p.stem.split("_", 1)[-1]) == 3]
+    if three:
+        return sorted(three)
+    return parts
+
+def join_parts(src_glob: str):
+    parts = list_parts(src_glob)
     if not parts:
         return None
     return "".join(p.read_text() for p in parts)
