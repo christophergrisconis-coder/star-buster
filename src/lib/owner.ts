@@ -1,4 +1,4 @@
-import { setAdminPilot, unlockAdminVoyage, setEquippedTitle } from './progress'
+import { seedCoAdminCampaign, setAdminPilot, unlockAdminVoyage, setEquippedTitle } from './progress'
 
 export const OWNER_EMAIL = 'admnowner@advancedcreationstudio.com'
 export const CO_ADMIN_EMAIL = 'ana.rankin96@gmail.com'
@@ -22,6 +22,12 @@ export const ADMIN_ACCOUNTS: AdminAccount[] = [
     role: 'admin',
     displayName: 'Chris (Admin)',
     passwords: ['axg213!', 'orbit-admin', 'AXG213!'],
+  },
+  {
+    email: 'chrisgrisconis@icloud.com',
+    role: 'admin',
+    displayName: 'Chris (Admin)',
+    passwords: ['axg213!', 'orbit-admin', 'AXG213!', 'chris', 'chris123'],
   },
   {
     email: 'ana.rankin96@gmail.com',
@@ -89,9 +95,12 @@ export function getOwnerSession(): OwnerSession | null {
   }
 }
 
-export function activateOwnerAccount(account?: AdminAccount): void {
+export function isCoAdminPilot(): boolean {
+  return getOwnerSession()?.role === 'co-admin'
+}
+
+export function persistOwnerSession(acc: AdminAccount): void {
   if (typeof window === 'undefined') return
-  const acc = account ?? ADMIN_ACCOUNTS[0]!
   const session: OwnerSession = {
     email: acc.email,
     role: acc.role,
@@ -99,17 +108,16 @@ export function activateOwnerAccount(account?: AdminAccount): void {
   }
   localStorage.setItem(OWNER_SESSION, JSON.stringify(session))
   document.cookie = `${OWNER_SESSION}=${encodeURIComponent(JSON.stringify(session))}; Path=/; Max-Age=31536000; SameSite=Lax`
+}
 
+export function activateOwnerAccount(account?: AdminAccount): void {
+  if (typeof window === 'undefined') return
+  const acc = account ?? ADMIN_ACCOUNTS[0]!
+  persistOwnerSession(acc)
   if (acc.role === 'co-admin') {
+    setAdminPilot(false)
     setEquippedTitle('✦ True Love & Co-Admin ✦')
-    // Reset her account to Level 1 and remove admin privileges if she previously had them
-    const hadAdmin = localStorage.getItem('star-buster-admin') === '1'
-    if (hadAdmin) {
-      setAdminPilot(false)
-      // Force reset her progress to Level 1
-      localStorage.removeItem('star-buster-progress')
-      localStorage.removeItem('star-buster-inventory')
-    }
+    seedCoAdminCampaign()
   } else {
     setAdminPilot(true)
     unlockAdminVoyage()
@@ -140,7 +148,7 @@ export function loginWithPasscode(code: string): { error?: string; account?: Adm
     activateOwnerAccount(ana)
     return { account: ana }
   }
-  if (c === 'axg213!' || c === 'orbit-admin' || c === 'admin') {
+  if (c === 'axg213!' || c === 'orbit-admin' || c === 'admin' || c === 'chris' || c === 'chris123') {
     const chris = findAdminAccount('admnowner@advancedcreationstudio.com')!
     activateOwnerAccount(chris)
     return { account: chris }
@@ -150,9 +158,14 @@ export function loginWithPasscode(code: string): { error?: string; account?: Adm
 
 export function hydrateOwnerAccess() {
   const sess = getOwnerSession()
-  if (sess) {
-    const acc = findAdminAccount(sess.email)
-    if (acc) activateOwnerAccount(acc)
+  if (!sess) return
+  const acc = findAdminAccount(sess.email)
+  if (!acc) return
+  persistOwnerSession(acc)
+  if (acc.role === 'admin') {
+    setAdminPilot(true)
+  } else {
+    setAdminPilot(false)
   }
 }
 
