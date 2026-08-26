@@ -15,13 +15,13 @@ export const ADMIN_ACCOUNTS: AdminAccount[] = [
     email: 'admnowner@advancedcreationstudio.com',
     role: 'admin',
     displayName: 'Chris (Admin)',
-    passwords: ['axg213!', 'orbit-admin', 'admin', 'AXG213!'],
+    passwords: ['axg213!', 'orbit-admin', 'admin', 'AXG213!', 'cwg021326!', 'cwg021325!', 'CWG021326!', 'CWG021325!'],
   },
   {
     email: 'chris@advancedcreationstudio.com',
     role: 'admin',
     displayName: 'Chris (Admin)',
-    passwords: ['axg213!', 'orbit-admin', 'AXG213!'],
+    passwords: ['axg213!', 'orbit-admin', 'AXG213!', 'cwg021326!', 'cwg021325!', 'CWG021326!', 'CWG021325!'],
   },
   {
     email: 'chrisgrisconis@icloud.com',
