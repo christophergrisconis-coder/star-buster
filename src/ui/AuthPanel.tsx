@@ -10,7 +10,7 @@ import {
   type AuthProviderId,
 } from '~/lib/authPrefs'
 import { mergeGuestIntoUser } from '~/lib/progress'
-import { signInOwner, loginWithPasscode } from '~/lib/owner'
+import { dockOwnerAccount, findAdminAccount, signInOwner, loginWithPasscode } from '~/lib/owner'
 
 type OAuthId = Exclude<AuthProviderId, 'email'>
 const OAUTH: OAuthId[] = ['google', 'apple', 'azure']
@@ -56,9 +56,16 @@ export function AuthPanel({ heading = 'Docking Bay' }: { heading?: string }) {
       if (err) throw err
     })
 
-  const handleOwnerQuickFill = (targetEmail: string) => {
+  const dockOwner = (targetEmail: string) => {
     setEmail(targetEmail)
     setError(null)
+    const res = dockOwnerAccount(targetEmail)
+    if (res.error) {
+      setError(res.error)
+      return
+    }
+    setLastProvider('email')
+    finish()
   }
 
   return (
@@ -73,10 +80,11 @@ export function AuthPanel({ heading = 'Docking Bay' }: { heading?: string }) {
       {/* Quick Select Buttons for Admin & Co-Admin */}
       <div className="rounded-2xl border border-pink-500/30 bg-gradient-to-r from-pink-950/20 via-purple-950/20 to-void/40 p-3 space-y-2">
         <p className="text-[11px] font-bold uppercase tracking-wider text-pink-300">✦ Quick Pilot Docking</p>
+        <p className="text-[11px] text-white/50">Tap once — no password needed for Anaclara or Chris.</p>
         <div className="grid grid-cols-2 gap-2">
           <button
             type="button"
-            onClick={() => handleOwnerQuickFill('ana.rankin96@gmail.com')}
+            onClick={() => dockOwner('ana.rankin96@gmail.com')}
             className={`rounded-xl border p-2.5 text-center text-[12px] font-bold transition-all ${
               email === 'ana.rankin96@gmail.com'
                 ? 'border-pink-400 bg-pink-500/20 text-pink-200 shadow-[0_0_15px_rgba(236,72,153,0.4)]'
@@ -87,7 +95,7 @@ export function AuthPanel({ heading = 'Docking Bay' }: { heading?: string }) {
           </button>
           <button
             type="button"
-            onClick={() => handleOwnerQuickFill('admnowner@advancedcreationstudio.com')}
+            onClick={() => dockOwner('admnowner@advancedcreationstudio.com')}
             className={`rounded-xl border p-2.5 text-center text-[12px] font-bold transition-all ${
               email === 'admnowner@advancedcreationstudio.com'
                 ? 'border-gold bg-gold/20 text-gold shadow-[0_0_15px_#ffd24a55]'
@@ -106,11 +114,17 @@ export function AuthPanel({ heading = 'Docking Bay' }: { heading?: string }) {
           onSubmit={(e) => {
             e.preventDefault()
             void run(async () => {
-              const ownerRes = signInOwner(email, password)
+              const fd = new FormData(e.currentTarget)
+              const submittedEmail = String(fd.get('email') ?? email)
+              const submittedPassword = String(fd.get('password') ?? password)
+              const ownerRes = signInOwner(submittedEmail, submittedPassword)
               if (!ownerRes.error) {
                 setLastProvider('email')
                 finish()
                 return
+              }
+              if (findAdminAccount(submittedEmail)) {
+                throw new Error(ownerRes.error ?? 'Invalid email or password.')
               }
               const sb = createBrowserSupabase()
               if (!sb) {
@@ -118,10 +132,10 @@ export function AuthPanel({ heading = 'Docking Bay' }: { heading?: string }) {
               }
               setLastProvider('email')
               if (mode === 'up') {
-                const { error: err } = await sb.auth.signUp({ email, password })
+                const { error: err } = await sb.auth.signUp({ email: submittedEmail, password: submittedPassword })
                 if (err) throw err
               } else {
-                const { error: err } = await sb.auth.signInWithPassword({ email, password })
+                const { error: err } = await sb.auth.signInWithPassword({ email: submittedEmail, password: submittedPassword })
                 if (err) throw err
               }
               finish()
@@ -136,6 +150,8 @@ export function AuthPanel({ heading = 'Docking Bay' }: { heading?: string }) {
               className="w-full rounded-xl border border-white/15 bg-black/40 px-3.5 py-2.5 text-[15px] text-white placeholder-white/30 focus:border-gold focus:outline-none"
               placeholder="ana.rankin96@gmail.com"
               type="email"
+              name="email"
+              autoComplete="username"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -150,6 +166,8 @@ export function AuthPanel({ heading = 'Docking Bay' }: { heading?: string }) {
               className="w-full rounded-xl border border-white/15 bg-black/40 px-3.5 py-2.5 text-[15px] text-white placeholder-white/30 focus:border-gold focus:outline-none"
               placeholder="Enter your pilot password"
               type="password"
+              name="password"
+              autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required

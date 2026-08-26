@@ -1,6 +1,6 @@
 import type { StoreItem } from '~/data/store'
 import { LEVEL_BY_ID } from '~/data/campaign'
-import { LIFE_MAX } from '~/data/gifts'
+import { getMaxLives } from '~/data/gifts'
 import { BADGES } from '~/data/rewards'
 import {
   canSkipLevel,
@@ -149,7 +149,7 @@ export function unlockAdminVoyage() {
   const inv = getInventory()
   inv.coins = Math.max(inv.coins, 99_999)
   inv.stardust = Math.max(inv.stardust, 99_999)
-  inv.lives = LIFE_MAX
+  inv.lives = getMaxLives()
   inv.sector = 5
   for (const [id, n] of Object.entries(ADMIN_KIT)) {
     inv.items[id] = Math.max(inv.items[id] ?? 0, n)
@@ -235,8 +235,8 @@ export function nebulaAllStarred(nebulaId: string, progress = getProgress()): bo
 
 export function grantLives(n = 1): boolean {
   const inv = getInventory()
-  if (inv.lives >= LIFE_MAX) return false
-  inv.lives = Math.min(LIFE_MAX, inv.lives + n)
+  if (inv.lives >= getMaxLives()) return false
+  inv.lives = Math.min(getMaxLives(), inv.lives + n)
   write(INV, inv)
   return true
 }
@@ -347,8 +347,8 @@ export function purchase(item: StoreItem): { error?: string } {
     else inv.stardust -= item.price
   }
   if (item.kind === 'lives') {
-    if (inv.lives >= LIFE_MAX) return { error: 'Pulse well is full (5)' }
-    inv.lives = Math.min(LIFE_MAX, inv.lives + (item.qty ?? 5))
+    if (inv.lives >= getMaxLives()) return { error: 'Pulse well is full (5)' }
+    inv.lives = Math.min(getMaxLives(), inv.lives + (item.qty ?? 5))
   }
   else if (item.kind === 'skin' && item.payload) inv.skin = item.payload
   else if (item.grants) {

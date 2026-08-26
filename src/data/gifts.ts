@@ -1,6 +1,15 @@
 import { STORE_CATALOG, type StoreItem } from './store'
 
 export const LIFE_MAX = 5
+
+export function getMaxLives() {
+  if (typeof window === 'undefined') return 5
+  try {
+    const raw = localStorage.getItem('star-buster-owner')
+    if (raw && JSON.parse(raw).role === 'co-admin') return 7
+  } catch {}
+  return 5
+}
 export const LIFE_SEND_COOLDOWN_MS = 4 * 60 * 60 * 1000
 export const HINT_COIN_COST = 40
 export const CONTINUE_COIN_COST = 120

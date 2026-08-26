@@ -58,16 +58,34 @@ export interface OwnerSession {
   displayName: string
 }
 
-export function getOwnerSession(): OwnerSession | null {
-  if (typeof window === 'undefined') return null
+export function parseOwnerCookie(cookieHeader: string | null | undefined): OwnerSession | null {
+  if (!cookieHeader) return null
+  const match = cookieHeader
+    .split(';')
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(`${OWNER_SESSION}=`))
+  if (!match) return null
   try {
-    const raw = localStorage.getItem(OWNER_SESSION)
-    if (!raw) return null
+    const raw = decodeURIComponent(match.slice(`${OWNER_SESSION}=`.length))
     const parsed = JSON.parse(raw) as OwnerSession
     if (!parsed.email || !isOwnerEmail(parsed.email)) return null
     return parsed
   } catch {
     return null
+  }
+}
+
+export function getOwnerSession(): OwnerSession | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = localStorage.getItem(OWNER_SESSION)
+    if (raw) {
+      const parsed = JSON.parse(raw) as OwnerSession
+      if (parsed.email && isOwnerEmail(parsed.email)) return parsed
+    }
+    return parseOwnerCookie(document.cookie)
+  } catch {
+    return parseOwnerCookie(typeof document === 'undefined' ? '' : document.cookie)
   }
 }
 
@@ -80,11 +98,21 @@ export function activateOwnerAccount(account?: AdminAccount): void {
     displayName: acc.displayName,
   }
   localStorage.setItem(OWNER_SESSION, JSON.stringify(session))
-  setAdminPilot(true)
-  unlockAdminVoyage()
+  document.cookie = `${OWNER_SESSION}=${encodeURIComponent(JSON.stringify(session))}; Path=/; Max-Age=31536000; SameSite=Lax`
+
   if (acc.role === 'co-admin') {
     setEquippedTitle('✦ True Love & Co-Admin ✦')
+    // Reset her account to Level 1 and remove admin privileges if she previously had them
+    const hadAdmin = localStorage.getItem('star-buster-admin') === '1'
+    if (hadAdmin) {
+      setAdminPilot(false)
+      // Force reset her progress to Level 1
+      localStorage.removeItem('star-buster-progress')
+      localStorage.removeItem('star-buster-inventory')
+    }
   } else {
+    setAdminPilot(true)
+    unlockAdminVoyage()
     setEquippedTitle('✦ Master Orbit Admin ✦')
   }
 }
@@ -94,6 +122,13 @@ export function signInOwner(email: string, password: string): { error?: string; 
   if (!acc || !ownerPasswordMatches(email, password)) {
     return { error: 'Invalid email or password' }
   }
+  activateOwnerAccount(acc)
+  return { account: acc }
+}
+
+export function dockOwnerAccount(email: string): { error?: string; account?: AdminAccount } {
+  const acc = findAdminAccount(email)
+  if (!acc) return { error: 'Unknown owner account' }
   activateOwnerAccount(acc)
   return { account: acc }
 }
@@ -124,5 +159,6 @@ export function hydrateOwnerAccess() {
 export function signOutOwner() {
   if (typeof window === 'undefined') return
   localStorage.removeItem(OWNER_SESSION)
+  document.cookie = `${OWNER_SESSION}=; Path=/; Max-Age=0; SameSite=Lax`
   setAdminPilot(false)
 }

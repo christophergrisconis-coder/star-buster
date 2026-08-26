@@ -1,7 +1,7 @@
 import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
-import { getSessionUser } from '~/server/session'
+import { getOwnerCookieSession, getSessionUser } from '~/server/session'
 import {
   getInventory,
   getProgress,
@@ -32,6 +32,8 @@ export const Route = createFileRoute('/profile')({
         if (data.session) return { session: data.session }
       }
     }
+    const ownerCookie = await getOwnerCookieSession()
+    if (ownerCookie) return { session: { user: { email: ownerCookie.email } } }
     const session = await getSessionUser()
     if (!session) throw redirect({ to: '/auth' })
     return { session }

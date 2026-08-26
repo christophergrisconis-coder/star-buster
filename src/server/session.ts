@@ -1,5 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import { createServerSupabase } from '~/lib/supabase/server'
+import { parseOwnerCookie } from '~/lib/owner'
 
 export async function userIdFromRequest(): Promise<string | null> {
   try {
@@ -13,6 +14,15 @@ export async function userIdFromRequest(): Promise<string | null> {
     return null
   }
 }
+
+export const getOwnerCookieSession = createServerFn({ method: 'GET' }).handler(async () => {
+  try {
+    const { getRequestHeader } = await import('@tanstack/react-start/server')
+    return parseOwnerCookie(getRequestHeader('cookie'))
+  } catch {
+    return null
+  }
+})
 
 export const getSessionUser = createServerFn({ method: 'GET' }).handler(async () => {
   const id = await userIdFromRequest()
