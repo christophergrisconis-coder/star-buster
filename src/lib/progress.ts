@@ -249,6 +249,23 @@ export function nebulaAllStarred(nebulaId: string, progress = getProgress()): bo
   return ids.every((id) => (progress.levels[id]?.stars ?? 0) >= 3)
 }
 
+export function applyLifeRegen(): void {
+  const inv = getInventory()
+  if (inv.lives < getMaxLives()) {
+    // Regenerate lives towards max
+    const lastRegenKey = 'star-buster-last-regen'
+    const now = Date.now()
+    const last = Number(localStorage.getItem(lastRegenKey) || now)
+    const passedMinutes = Math.floor((now - last) / (15 * 60 * 1000))
+    if (passedMinutes >= 1) {
+      const added = Math.min(getMaxLives() - inv.lives, passedMinutes)
+      inv.lives += added
+      write(INV, inv)
+      localStorage.setItem(lastRegenKey, String(now))
+    }
+  }
+}
+
 export function grantLives(n = 1): boolean {
   const inv = getInventory()
   if (inv.lives >= getMaxLives()) return false
