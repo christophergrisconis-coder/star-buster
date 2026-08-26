@@ -1,6 +1,8 @@
 import type { StoreItem } from '~/data/store'
 import { LEVEL_BY_ID } from '~/data/campaign'
 import { getMaxLives } from '~/data/gifts'
+import { KIT_SLOTS } from '~/data/kit'
+import { isCoAdminSlot } from './pilotSlot'
 import { BADGES } from '~/data/rewards'
 import {
   canSkipLevel,
@@ -31,6 +33,8 @@ export interface Inventory {
   skin: string
   sector: number
   kitSeeded?: boolean
+  lifeClock?: number
+  coAdminKitAt?: Record<number, boolean>
 }
 
 export interface ProgressBlob {
@@ -97,12 +101,93 @@ function write(key: string, value: unknown) {
   localStorage.setItem(key, JSON.stringify(value))
 }
 
+function progressKey() {
+  return `${KEY}${isCoAdminSlot() ? ':ana' : ''}`
+}
+
+function invKey() {
+  return `${INV}${isCoAdminSlot() ? ':ana' : ''}`
+}
+
 export function getProgress(): ProgressBlob {
-  return read<ProgressBlob>(KEY, { levels: {}, guest: true })
+  return read<ProgressBlob>(progressKey(), { levels: {}, guest: true })
 }
 
 export function getInventory(): Inventory {
-  return read<Inventory>(INV, defaultInv())
+  return read<Inventory>(invKey(), defaultInv())
+}
+
+const HOUR_MS = 60 * 60 * 1000
+
+export function applyLifeRegen() {
+  if (typeof window === 'undefined') return
+  if (isAdminPilot()) {
+    const inv = getInventory()
+    const max = getMaxLives()
+    if (inv.lives !== max) {
+      inv.lives = max
+      write(invKey(), inv)
+    }
+    return
+  }
+  const inv = getInventory()
+  const max = getMaxLives()
+  if (inv.lives >= max) {
+    if (inv.lifeClock) {
+      inv.lifeClock = Date.now()
+      write(invKey(), inv)
+    }
+    return
+  }
+  const clock = inv.lifeClock ?? Date.now()
+  const elapsed = Date.now() - clock
+  let add = 0
+  let nextClock = clock
+  if (isCoAdminSlot()) {
+    const ticks = Math.floor(elapsed / (5 * HOUR_MS))
+    if (ticks > 0) {
+      add = ticks
+      nextClock = clock + ticks * 5 * HOUR_MS
+    }
+  } else if (elapsed >= 24 * HOUR_MS) {
+    add = max
+    nextClock = Date.now()
+  } else if (elapsed >= 12 * HOUR_MS) {
+    add = 2
+    nextClock = clock + 12 * HOUR_MS
+  }
+  if (add <= 0) return
+  inv.lives = Math.min(max, inv.lives + add)
+  inv.lifeClock = inv.lives >= max ? Date.now() : nextClock
+  write(invKey(), inv)
+}
+
+export function seedCoAdminCampaign() {
+  if (!isCoAdminSlot()) return
+  const p = getProgress()
+  p.guest = false
+  p.admin = false
+  write(progressKey(), p)
+  const inv = getInventory()
+  if (inv.kitSeeded) return
+  inv.coins = 400
+  inv.stardust = 40
+  inv.lives = getMaxLives()
+  inv.sector = 1
+  inv.items = {}
+  for (const slot of KIT_SLOTS) inv.items[slot.item] = 1
+  inv.kitSeeded = true
+  inv.lifeClock = Date.now()
+  write(invKey(), inv)
+}
+
+export function seedCoAdminLevelKit(levelId: number) {
+  if (!isCoAdminSlot() || !Number.isFinite(levelId) || levelId < 1) return
+  const inv = getInventory()
+  if (inv.coAdminKitAt?.[levelId]) return
+  for (const slot of KIT_SLOTS) inv.items[slot.item] = 1
+  inv.coAdminKitAt = { ...(inv.coAdminKitAt ?? {}), [levelId]: true }
+  write(invKey(), inv)
 }
 
 const ADMIN_KEY = 'star-buster-admin'
@@ -132,7 +217,7 @@ export function setAdminPilot(on: boolean) {
 export function grantItem(id: string, n = 1) {
   const inv = getInventory()
   inv.items[id] = (inv.items[id] ?? 0) + n
-  write(INV, inv)
+  write(invKey(), inv)
 }
 
 export function grantAdminKit(): { error?: string } {
@@ -145,7 +230,7 @@ export function unlockAdminVoyage() {
   const p = getProgress()
   p.guest = false
   p.admin = true
-  write(KEY, p)
+  write(progressKey(), p)
   const inv = getInventory()
   inv.coins = Math.max(inv.coins, 99_999)
   inv.stardust = Math.max(inv.stardust, 99_999)
@@ -154,7 +239,7 @@ export function unlockAdminVoyage() {
   for (const [id, n] of Object.entries(ADMIN_KIT)) {
     inv.items[id] = Math.max(inv.items[id] ?? 0, n)
   }
-  write(INV, inv)
+  write(invKey(), inv)
 }
 
 export function highestUnlocked(): number {
@@ -212,17 +297,19 @@ export function recordWin(
   if (stampedNow && nebulaId) {
     p.stamps = { ...(p.stamps ?? {}), [nebulaId]: true }
   }
-  write(KEY, p)
+  write(progressKey(), p)
   const inv = getInventory()
   inv.coins += coins
   if (extra?.stardust) inv.stardust += extra.stardust
   inv.sector = Math.max(inv.sector, level?.sectorId ?? Math.ceil(levelId / 50))
-  write(INV, inv)
-  if (nebulaId && !nebulaWasDone && nebulaRequiredComplete(nebulaId, p)) grantLives(1)
-  if (getInventory().sector > sectorBefore) grantLives(1)
-  if (stampedNow) {
-    grantItem('solar-flare', 2)
-    grantItem('hammer', 1)
+  write(invKey(), inv)
+  if (!isCoAdminSlot()) {
+    if (nebulaId && !nebulaWasDone && nebulaRequiredComplete(nebulaId, p)) grantLives(1)
+    if (getInventory().sector > sectorBefore) grantLives(1)
+    if (stampedNow) {
+      grantItem('solar-flare', 2)
+      grantItem('hammer', 1)
+    }
   }
   return extra?.badge ?? BADGES.find((b) => b.at === levelId)?.name ?? null
 }
@@ -237,29 +324,30 @@ export function grantLives(n = 1): boolean {
   const inv = getInventory()
   if (inv.lives >= getMaxLives()) return false
   inv.lives = Math.min(getMaxLives(), inv.lives + n)
-  write(INV, inv)
+  write(invKey(), inv)
   return true
 }
 
 export function grantCoins(n: number) {
   const inv = getInventory()
   inv.coins += n
-  write(INV, inv)
+  write(invKey(), inv)
 }
 
 export function spendStardust(n: number): { error?: string } {
   const inv = getInventory()
   if (inv.stardust < n) return { error: 'Not enough stardust' }
   inv.stardust -= n
-  write(INV, inv)
+  write(invKey(), inv)
   return {}
 }
 
 export function spendLife(): boolean {
   const inv = getInventory()
   if (inv.lives <= 0) return false
+  if (inv.lives >= getMaxLives()) inv.lifeClock = Date.now()
   inv.lives -= 1
-  write(INV, inv)
+  write(invKey(), inv)
   return true
 }
 
@@ -272,7 +360,7 @@ export function spendCoins(n: number): boolean {
   const inv = getInventory()
   if (inv.coins < n) return false
   inv.coins -= n
-  write(INV, inv)
+  write(invKey(), inv)
   return true
 }
 
@@ -284,13 +372,13 @@ export function bumpCometStreak(peak: number, won: boolean) {
   } else if (!won) {
     p.cometStreak = 0
   }
-  write(KEY, p)
+  write(progressKey(), p)
 }
 
 export function recordDailyScore(day: string, score: number) {
   const p = getProgress()
   p.dailyBest = { ...(p.dailyBest ?? {}), [day]: Math.max(p.dailyBest?.[day] ?? 0, score) }
-  write(KEY, p)
+  write(progressKey(), p)
 }
 
 export function completedChallenges(levelId: number): string[] {
@@ -312,7 +400,7 @@ export function getEquippedTitle(): string {
 export function setEquippedTitle(title: string) {
   const p = getProgress()
   p.equippedTitle = title
-  write(KEY, p)
+  write(progressKey(), p)
 }
 
 export function getRerollSeed(nebulaId: string): number {
@@ -323,7 +411,7 @@ export function bumpReroll(nebulaId: string): { error?: string } {
   if (!consumeItem('challenge-reroll')) return { error: 'Need a challenge reroll' }
   const p = getProgress()
   p.challengeRerolls = { ...(p.challengeRerolls ?? {}), [nebulaId]: (p.challengeRerolls?.[nebulaId] ?? 0) + 1 }
-  write(KEY, p)
+  write(progressKey(), p)
   return {}
 }
 
@@ -358,7 +446,7 @@ export function purchase(item: StoreItem): { error?: string } {
   } else {
     inv.items[item.id] = (inv.items[item.id] ?? 0) + (item.qty ?? 1)
   }
-  write(INV, inv)
+  write(invKey(), inv)
   return {}
 }
 
@@ -367,7 +455,7 @@ export function consumeItem(id: string): boolean {
   if (!inv.items[id]) return false
   inv.items[id] -= 1
   if (inv.items[id] <= 0) delete inv.items[id]
-  write(INV, inv)
+  write(invKey(), inv)
   return true
 }
 
@@ -395,7 +483,7 @@ export function countItems(ids: readonly string[]): number {
 export function mergeGuestIntoUser() {
   const p = getProgress()
   p.guest = false
-  write(KEY, p)
+  write(progressKey(), p)
 }
 
 export function exportGuestSaves() {

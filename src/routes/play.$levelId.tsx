@@ -18,6 +18,7 @@ import { CAMPAIGN, LEVEL_BY_ID } from '~/data/campaign'
 import { createGame, howToClear, reduce } from '~/engine'
 import { isSwappable, type GameState } from '~/engine/types'
 import { ChallengeToast } from '~/fx/comboBanners'
+import { MeteorShowerVictory } from '~/fx/MeteorShowerVictory'
 import { useHintCoach } from '~/hint/useHint'
 import { Board } from '~/ui/Board'
 import { FailSheet } from '~/ui/FailSheet'
@@ -45,6 +46,7 @@ import {
   recordWin,
   spendCoins,
   spendLife,
+  seedCoAdminLevelKit,
 } from '~/lib/progress'
 import { kitItemIds, kitLabelForItem, slotById } from '~/data/kit'
 import { applyTutorialBoard, LESSONS, TUTORIAL_LEVEL, TUTORIAL_SUN } from '~/data/tutorial'
@@ -212,6 +214,12 @@ function PlayPage() {
   }
   const jumpNextOrbitRef = useRef(jumpNextOrbit)
   jumpNextOrbitRef.current = jumpNextOrbit
+
+  useEffect(() => {
+    if (isLesson || isDaily || !Number.isFinite(id) || id < 1) return
+    seedCoAdminLevelKit(id)
+    setKitCounts(readKitCounts())
+  }, [id, isLesson, isDaily])
 
   useEffect(() => {
     if (state?.status !== 'won' && state?.status !== 'finale') {
@@ -671,6 +679,7 @@ function PlayPage() {
       {badge ? (
         <p className="text-center text-[12px] text-gold">{badge}</p>
       ) : null}
+      {state.status === 'won' ? <MeteorShowerVictory /> : null}
       {state.status === 'won' && !orbitJump ? (
         <div className="rounded-2xl border border-gold/40 bg-black/40 p-3 text-center">
           <p className="display text-[28px] text-gold">{isLesson ? 'Flight School clear' : 'Stage clear'}</p>

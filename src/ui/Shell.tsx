@@ -6,8 +6,8 @@ import { LivesPips } from './LivesPips'
 import { MuteButton } from './MuteButton'
 import { Tabs } from './Tabs'
 import { hydrateOwnerAccess } from '~/lib/owner'
-import { getInventory } from '~/lib/progress'
-import { AnaclaraLoveModal } from './AnaclaraLoveModal'
+import { applyLifeRegen, getInventory } from '~/lib/progress'
+import { DailyPilotGreetings } from './DailyPilotGreetings'
 
 export function ThemeToggle() {
   const toggle = () => {
@@ -38,6 +38,7 @@ export function ThemeToggle() {
 export function Shell({ children }: { children: ReactNode }) {
   useEffect(() => {
     hydrateOwnerAccess()
+    applyLifeRegen()
   }, [])
   return (
     <>
@@ -57,7 +58,7 @@ export function Shell({ children }: { children: ReactNode }) {
         <Tabs />
         <div className="app-main relative z-10 min-h-0 flex-1">{children}</div>
       </div>
-      <AnaclaraLoveModal />
+      <DailyPilotGreetings />
     </>
   )
 }

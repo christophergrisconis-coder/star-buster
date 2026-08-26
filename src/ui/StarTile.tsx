@@ -1,6 +1,8 @@
-import { useId } from 'react'
+import { useId, useEffect, useState } from 'react'
 import { SKIN_FILTERS } from '~/data/store'
 import type { Cell, StarColor } from '~/engine/types'
+import { isCoAdminPilot } from '~/lib/owner'
+import { LumaStar } from './LumaStar'
 import { STAR5, sunRayPath } from './starGeometry'
 
 const FILLS: Record<StarColor, { a: string; b: string; c: string; glow: string; brow: string }> = {
@@ -337,6 +339,10 @@ export function StarTile({
   skin?: string
 }) {
   const uid = useId().replace(/:/g, '')
+  const [lumaSky, setLumaSky] = useState(false)
+  useEffect(() => {
+    setLumaSky(isCoAdminPilot())
+  }, [])
   const fill = cell.ingredient
     ? INGREDIENT_FILL
     : cell.color
@@ -388,7 +394,9 @@ export function StarTile({
           className={`h-full w-full ${motion} ${specialMotion(cell.special)}`}
           style={{ animationDelay: `${delay ?? 0}ms` }}
         >
-          {isColorBomb ? (
+          {lumaSky && !cell.ingredient ? (
+            <LumaStar color={cell.color} special={cell.special} />
+          ) : isColorBomb ? (
             <NovaBomb id={uid} />
           ) : powerPlay ? (
             <SunCore id={uid} fill={fill} special={cell.special} powerPlay />

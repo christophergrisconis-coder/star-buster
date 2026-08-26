@@ -1,4 +1,7 @@
+import { useEffect, useState } from 'react'
 import type { StarColor } from '~/engine/types'
+import { isCoAdminPilot } from '~/lib/owner'
+import { LumaStar } from './LumaStar'
 import { BlazingSun, NovaBomb, SharpStar } from './StarTile'
 
 const FILLS: Record<StarColor, { a: string; b: string; c: string; glow: string; brow: string }> = {
@@ -28,6 +31,17 @@ export function SuperstarSvg({
     | 'color-bomb'
     | 'starfish'
   const fill = color ? FILLS[color] : FILLS.gold
+  const [lumaSky, setLumaSky] = useState(false)
+  useEffect(() => {
+    setLumaSky(isCoAdminPilot())
+  }, [])
+  if (lumaSky) {
+    return (
+      <span className="star-idle relative inline-block" style={{ width: size, height: size }}>
+        <LumaStar color={color} special={spec} />
+      </span>
+    )
+  }
   return (
     <span className="star-idle relative inline-block" style={{ width: size, height: size }}>
       {spec === 'color-bomb' ? (

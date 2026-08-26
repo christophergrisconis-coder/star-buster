@@ -36,7 +36,10 @@ In Supabase → Authentication → Providers, enable:
 - **Apple**
 - **Azure** (this is Sign in with Microsoft)
 
-Set the Site URL and redirect URLs to `VITE_SITE_URL` (see `.env.example`), including `http://localhost:3000` for local and your production origin. OAuth redirect lands on `/profile`.
+Set the Site URL and redirect URLs to `VITE_SITE_URL` (see `.env.example`), including `http://localhost:3000` for local and `https://starbuster.acstudioapps.us` in production. OAuth redirect lands on `/profile`.
+
+Live site: **https://starbuster.acstudioapps.us**  
+Family dock: **https://starbuster.acstudioapps.us/auth?family=dock**
 
 Remember me stores the session in `localStorage`. Unchecked uses `sessionStorage`, so the session survives refresh but not a browser restart.
 

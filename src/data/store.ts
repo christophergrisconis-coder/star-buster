@@ -210,7 +210,19 @@ const EXPANSION: StoreItem[] = [
   { id: 'skin-umbra', kind: 'skin', name: 'Umbra Cloth', blurb: 'Shadowed cores. Late swagger', price: 430, currency: 'stardust', minSector: 4, preview: 'skin', payload: 'umbra' },
   { id: 'skin-analog', kind: 'skin', name: 'Analog Gold', blurb: 'Warm film grain. Horizon only', price: 480, currency: 'stardust', minSector: 5, preview: 'skin', payload: 'analog' },
   { id: 'skin-lynx', kind: 'skin', name: 'Lynx Fire', blurb: 'Sharp amber. Last-light show', price: 500, currency: 'stardust', minSector: 5, preview: 'skin', payload: 'lynx' },
-  { id: 'skin-omega', kind: 'skin', name: 'Omega Cloth', blurb: 'The last skin. Event Horizon only', price: 560, currency: 'stardust', minSector: 5, preview: 'skin', payload: 'omega' },
+  { id: 'bundle-supernova-overlord', kind: 'bundle', name: 'Supernova Overlord', blurb: '10x Flares, 6x Hammers, 4x Wells, 4x Shuffles, 4x Shields. Supreme cosmic arsenal', price: 1200, currency: 'stardust', minSector: 4, preview: 'bundle', grants: { 'solar-flare': 10, hammer: 6, 'gravity-well': 4, 'star-shuffle': 4, 'ion-wake-shield': 4 } },
+  { id: 'bundle-star-captain', kind: 'bundle', name: 'Star Captain Belt', blurb: '5x Moves, 5x Clocks, 5x Flares, 5x Hammers. The ultimate standard issue kit', price: 650, currency: 'coins', minSector: 2, preview: 'bundle', grants: { 'moves-5': 5, 'orbit-time': 5, 'solar-flare': 5, hammer: 5 } },
+  { id: 'bundle-galactic-destroyer', kind: 'bundle', name: 'Galactic Destroyer Crate', blurb: '8x Flares, 6x Wells, 6x Splashes, 4x Skips. Clear any obstacle in deep space', price: 1400, currency: 'stardust', minSector: 5, preview: 'bundle', grants: { 'solar-flare': 8, 'gravity-well': 6, 'color-splash': 6, 'nebula-skip': 4 } },
+  { id: 'life-fifty-vault', kind: 'lives', name: 'Fifty-Life Mega Vault', blurb: '50 voyage lives for continuous deep-space exploration', price: 850, currency: 'coins', minSector: 3, preview: 'life', qty: 50 },
+  { id: 'life-infinite-pass', kind: 'lives', name: 'Eternal Life Reserve', blurb: '100 lives banked in your pilot core', price: 1100, currency: 'stardust', minSector: 4, preview: 'life', qty: 100 },
+  { id: 'moves-mega-rack', kind: 'moves', name: 'Mega Drift Reserve', blurb: '12 fuel charges (+60 total moves banked)', price: 720, currency: 'stardust', minSector: 4, preview: 'stripe', kit: 'moves', grants: { 'moves-5': 12 } },
+  { id: 'orbit-eternal', kind: 'orbit-time', name: 'Temporal Anchor', blurb: '8 deep clock charges (+280s total orbit time banked)', price: 960, currency: 'stardust', minSector: 4, preview: 'orbit', kit: 'orbit', grants: { 'orbit-time-deep': 8 } },
+
+  { id: 'skin-supernova', kind: 'skin', name: 'Supernova Flame', blurb: 'Blazing solar flares radiating white-hot fire', price: 420, currency: 'stardust', minSector: 3, preview: 'skin', payload: 'supernova' },
+  { id: 'skin-cyber', kind: 'skin', name: 'Cyberpunk Neon', blurb: 'Electric hyper-saturated cyan & magenta pulses', price: 360, currency: 'coins', minSector: 2, preview: 'skin', payload: 'cyber' },
+  { id: 'skin-amethyst', kind: 'skin', name: 'Galactic Amethyst', blurb: 'Deep royal violet crystal facets', price: 440, currency: 'stardust', minSector: 4, preview: 'skin', payload: 'amethyst' },
+  { id: 'skin-darkmatter', kind: 'skin', name: 'Dark Matter', blurb: 'Heavy gravity void with iridescent event horizon', price: 580, currency: 'stardust', minSector: 5, preview: 'skin', payload: 'darkmatter' },
+  { id: 'skin-apex', kind: 'skin', name: 'Apex Gold', blurb: 'Pure immaculate 24k solar brilliance', price: 620, currency: 'stardust', minSector: 5, preview: 'skin', payload: 'apex' },
 ]
 
 export const STORE_CATALOG: StoreItem[] = [...CORE, ...EXPANSION]
@@ -246,6 +258,11 @@ export const SKINS = [
   { id: 'analog', name: 'Analog Gold', minSector: 5 },
   { id: 'lynx', name: 'Lynx Fire', minSector: 5 },
   { id: 'omega', name: 'Omega Cloth', minSector: 5 },
+  { id: 'supernova', name: 'Supernova Flame', minSector: 3 },
+  { id: 'cyber', name: 'Cyberpunk Neon', minSector: 2 },
+  { id: 'amethyst', name: 'Galactic Amethyst', minSector: 4 },
+  { id: 'darkmatter', name: 'Dark Matter', minSector: 5 },
+  { id: 'apex', name: 'Apex Gold', minSector: 5 },
 ]
 
 export const SKIN_FILTERS: Record<string, string> = {
@@ -278,4 +295,9 @@ export const SKIN_FILTERS: Record<string, string> = {
   analog: 'sepia(0.25) saturate(1.15) contrast(1.05)',
   lynx: 'hue-rotate(-6deg) saturate(1.4) contrast(1.12)',
   omega: 'hue-rotate(12deg) saturate(1.55) contrast(1.18)',
+  supernova: 'hue-rotate(-25deg) saturate(1.8) contrast(1.25) brightness(1.15)',
+  cyber: 'hue-rotate(185deg) saturate(2.0) contrast(1.2) brightness(1.1)',
+  amethyst: 'hue-rotate(270deg) saturate(1.6) brightness(1.08)',
+  darkmatter: 'invert(0.15) hue-rotate(220deg) saturate(1.5) contrast(1.3)',
+  apex: 'hue-rotate(10deg) saturate(2.2) brightness(1.2) drop-shadow(0 0 6px #ffd24a)',
 }

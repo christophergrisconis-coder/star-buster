@@ -359,6 +359,18 @@ function applySpecialCombo(state: GameState, a: number, b: number): GameState | 
       }
       break
     }
+    case 'color-bomb-single': {
+      const bombIdx = ca.special === 'color-bomb' ? a : b
+      const otherIdx = bombIdx === a ? b : a
+      const targetColor = cells[otherIdx]!.color
+      seeds = new Set<number>([a, b])
+      if (targetColor) {
+        for (const i of colorIndices(cells, targetColor)) {
+          seeds.add(i)
+        }
+      }
+      break
+    }
     case 'color-bomb-double': {
       seeds = new Set<number>()
       for (let i = 0; i < cells.length; i++) seeds.add(i)

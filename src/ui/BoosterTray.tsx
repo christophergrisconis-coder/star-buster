@@ -1,5 +1,6 @@
 import { KIT_SLOTS, kitItemIds, type KitSlotId } from '~/data/kit'
 import { countItems, isAdminPilot } from '~/lib/progress'
+import { isCoAdminPilot } from '~/lib/owner'
 import { KitIcon } from './KitIcon'
 
 export type BoosterId = KitSlotId
@@ -30,7 +31,7 @@ export function BoosterTray({
       <p className="px-1 text-[10px] uppercase tracking-[0.2em] text-white/45">Solar kit</p>
       <div className="flex gap-2 overflow-x-auto pb-1 pt-1">
         {KIT_SLOTS.map((item) => {
-          const locked = !isAdminPilot() && sector < item.minSector
+          const locked = !isAdminPilot() && !isCoAdminPilot() && sector < item.minSector
           const owned = item.id === 'hammer' && freeHammer ? Math.max(1, counts[item.id]) : counts[item.id]
           const isArmed = armed === item.id
           const empty = !locked && owned <= 0

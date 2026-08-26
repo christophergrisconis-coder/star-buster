@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from '@tanstack/react-router'
+import { useNavigate, useRouterState } from '@tanstack/react-router'
 import { createBrowserSupabase, supabaseConfigured } from '~/lib/supabase/client'
 import {
   getLastProvider,
@@ -10,13 +10,17 @@ import {
   type AuthProviderId,
 } from '~/lib/authPrefs'
 import { mergeGuestIntoUser } from '~/lib/progress'
-import { dockOwnerAccount, findAdminAccount, signInOwner, loginWithPasscode } from '~/lib/owner'
+import { dockOwnerAccount, findAdminAccount, getOwnerSession, signInOwner, loginWithPasscode } from '~/lib/owner'
+import { hasCompletedTutorial } from '~/lib/tutorial'
 
 type OAuthId = Exclude<AuthProviderId, 'email'>
 const OAUTH: OAuthId[] = ['google', 'apple', 'azure']
 
 export function AuthPanel({ heading = 'Docking Bay' }: { heading?: string }) {
   const nav = useNavigate()
+  const familyDock = useRouterState({
+    select: (s) => new URLSearchParams(s.location.searchStr).get('family') === 'dock',
+  })
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -27,9 +31,18 @@ export function AuthPanel({ heading = 'Docking Bay' }: { heading?: string }) {
   const [showAllOAuth, setShowAllOAuth] = useState(false)
 
   const finish = () => {
-    mergeGuestIntoUser()
+    const owner = getOwnerSession()
+    if (owner?.role !== 'co-admin') mergeGuestIntoUser()
     setSuccess('Docking authorized! Welcome aboard.')
     setTimeout(() => {
+      if (owner?.role === 'co-admin' && !hasCompletedTutorial()) {
+        nav({
+          to: '/play/$levelId',
+          params: { levelId: 'tutorial' },
+          search: { challenge: undefined, seed: undefined },
+        })
+        return
+      }
       nav({ to: '/profile' })
     }, 600)
   }
@@ -77,7 +90,7 @@ export function AuthPanel({ heading = 'Docking Bay' }: { heading?: string }) {
         </p>
       </div>
 
-      {/* Quick Select Buttons for Admin & Co-Admin */}
+      {familyDock ? (
       <div className="rounded-2xl border border-pink-500/30 bg-gradient-to-r from-pink-950/20 via-purple-950/20 to-void/40 p-3 space-y-2">
         <p className="text-[11px] font-bold uppercase tracking-wider text-pink-300">✦ Quick Pilot Docking</p>
         <p className="text-[11px] text-white/50">Tap once — no password needed for Anaclara or Chris.</p>
@@ -106,6 +119,7 @@ export function AuthPanel({ heading = 'Docking Bay' }: { heading?: string }) {
           </button>
         </div>
       </div>
+      ) : null}
 
       {/* Primary Email & Password Form */}
       <div className="rounded-2xl border border-white/15 bg-white/5 p-4 shadow-lg">
@@ -216,7 +230,7 @@ export function AuthPanel({ heading = 'Docking Bay' }: { heading?: string }) {
         )}
       </div>
 
-      {/* 1-Code Quick Passcode Dock */}
+      {familyDock ? (
       <details className="rounded-2xl border border-gold/20 bg-black/30 p-3">
         <summary className="cursor-pointer text-[12px] font-semibold text-gold">
           ⚡ 1-Step Passcode Dock
@@ -250,6 +264,7 @@ export function AuthPanel({ heading = 'Docking Bay' }: { heading?: string }) {
           </button>
         </form>
       </details>
+      ) : null}
 
       {/* Social Logins (Google / Apple / Microsoft) */}
       <details className="rounded-2xl border border-white/10 bg-black/20 p-3">

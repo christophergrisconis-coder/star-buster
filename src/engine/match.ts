@@ -103,7 +103,7 @@ function collectSquares(
         byColor.set(color, list)
       }
       for (const [color, indices] of byColor) {
-        if (indices.length >= 3) runs.push({ indices, color, axis: 'h' })
+        if (indices.length === 4) runs.push({ indices, color, axis: 'h' })
       }
     }
   }

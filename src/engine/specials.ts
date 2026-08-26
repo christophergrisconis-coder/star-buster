@@ -120,6 +120,7 @@ export type SpecialComboType =
   | 'color-bomb-striped'
   | 'color-bomb-wrapped'
   | 'color-bomb-double'
+  | 'color-bomb-single'
 
 function isStriped(s: SpecialKind): boolean {
   return s === 'striped-h' || s === 'striped-v'
@@ -129,6 +130,8 @@ export function comboForSpecials(
   a: SpecialKind,
   b: SpecialKind,
 ): { type: SpecialComboType } | null {
+  if (a === 'color-bomb' && b === 'none') return { type: 'color-bomb-single' }
+  if (b === 'color-bomb' && a === 'none') return { type: 'color-bomb-single' }
   if (!isSunSpecial(a) || !isSunSpecial(b)) return null
   if (a === 'color-bomb' && b === 'color-bomb') return { type: 'color-bomb-double' }
   if (a === 'color-bomb' && b === 'wrapped') return { type: 'color-bomb-wrapped' }

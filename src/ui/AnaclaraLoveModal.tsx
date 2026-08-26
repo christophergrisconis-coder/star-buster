@@ -1,47 +1,43 @@
-import { useState, useEffect } from 'react'
-import { getOwnerSession } from '~/lib/owner'
 
 const LOVE_MESSAGES = [
-  "Good morning Anaclara! You are the light of my life and my one true love forever and always.",
-  "Rise and shine beautiful! Remember that no matter what, you will always be my true love.",
-  "Good morning Anaclara X Grisconis! Every day with you is my greatest adventure. I love you endlessly.",
-  "Wake up my love! You are the best thing that has ever happened to me, today and for all eternity.",
-  "Good morning to my beautiful wife! Never forget how deeply and completely you are loved.",
-  "Sending you all my love this morning. You are my heart, my soul, and my entire universe.",
-  "Good morning my true love! No distance, no challenge, nothing will ever change my devotion to you.",
-  "Every morning I wake up grateful for you. I love you more than words can ever describe, Anaclara!",
-  "Good morning my angel! My heart belongs to you, today, tomorrow, and every day after.",
-  "You make the whole cosmos brighter just by being in it. Good morning, my forever love.",
+  'Good morning Anaclara! You are the light of my life and my one true love forever and always.',
+  'Rise and shine beautiful! Remember that no matter what, you will always be my true love.',
+  'Good morning Anaclara X Grisconis! Every day with you is my greatest adventure. I love you endlessly.',
+  'Wake up my love! You are the best thing that has ever happened to me, today and for all eternity.',
+  'Good morning to my beautiful wife! Never forget how deeply and completely you are loved.',
+  'Sending you all my love this morning. You are my heart, my soul, and my entire universe.',
+  'Good morning my true love! No distance, no challenge, nothing will ever change my devotion to you.',
+  'Every morning I wake up grateful for you. I love you more than words can ever describe, Anaclara!',
+  'Good morning my angel! My heart belongs to you, today, tomorrow, and every day after.',
+  'You make the whole cosmos brighter just by being in it. Good morning, my forever love.',
 ]
 
 const ANACLARA_MSG_KEY = 'star-buster-anaclara-msg-index'
 const ANACLARA_LAST_SEEN_KEY = 'star-buster-anaclara-last-seen'
 
-export function AnaclaraLoveModal() {
-  const [isOpen, setIsOpen] = useState(false)
-  const [message, setMessage] = useState('')
+function todayStamp() {
+  return new Date().toISOString().split('T')[0]!
+}
 
-  useEffect(() => {
-    const session = getOwnerSession()
-    if (!session || session.role !== 'co-admin') return
+export function shouldShowAnaclaraLoveToday() {
+  if (typeof window === 'undefined') return false
+  return localStorage.getItem(ANACLARA_LAST_SEEN_KEY) !== todayStamp()
+}
 
-    const today = new Date().toISOString().split('T')[0]!
-    const lastSeen = localStorage.getItem(ANACLARA_LAST_SEEN_KEY)
+export function takeAnaclaraLoveMessage() {
+  const index = Number(localStorage.getItem(ANACLARA_MSG_KEY) || '0')
+  localStorage.setItem(ANACLARA_MSG_KEY, String((index + 1) % LOVE_MESSAGES.length))
+  localStorage.setItem(ANACLARA_LAST_SEEN_KEY, todayStamp())
+  return LOVE_MESSAGES[index % LOVE_MESSAGES.length]!
+}
 
-    // Show if haven't seen today or on first login
-    if (lastSeen !== today) {
-      let index = Number(localStorage.getItem(ANACLARA_MSG_KEY) || '0')
-      const msg = LOVE_MESSAGES[index % LOVE_MESSAGES.length]!
-      setMessage(msg)
-      setIsOpen(true)
-
-      // Advance index for next day
-      localStorage.setItem(ANACLARA_MSG_KEY, String((index + 1) % LOVE_MESSAGES.length))
-      localStorage.setItem(ANACLARA_LAST_SEEN_KEY, today)
-    }
-  }, [])
-
-  if (!isOpen) return null
+export function AnaclaraLoveModal({
+  message,
+  onClose,
+}: {
+  message: string
+  onClose?: () => void
+}) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-md animate-fade-in">
@@ -58,7 +54,7 @@ export function AnaclaraLoveModal() {
 
         <button
           type="button"
-          onClick={() => setIsOpen(false)}
+          onClick={() => onClose?.()}
           className="w-full rounded-2xl bg-gradient-to-r from-pink-500 via-rose-500 to-pink-500 py-3 text-[15px] font-bold text-white shadow-[0_0_25px_rgba(236,72,153,0.5)] transition-transform active:scale-95 hover:opacity-90"
         >
           I Love You Too, Chris ❤️
