@@ -5,34 +5,41 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
-def assemble(src_glob: str, dest: Path) -> bool:
+def join_parts(src_glob: str):
     parts = sorted(ROOT.glob(src_glob))
     if not parts:
+        return None
+    return "".join(p.read_text() for p in parts)
+
+def assemble(src_glob: str, dest: Path, strip_newlines: bool = False) -> bool:
+    data = join_parts(src_glob)
+    if data is None:
         print(f"skip {dest}: no parts for {src_glob}")
         return False
-    data = "".join(p.read_text() for p in parts)
+    if strip_newlines:
+        data = data.replace("\n", "")
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(data)
-    print(f"wrote {dest} ({len(data)} bytes) from {len(parts)} parts")
+    print(f"wrote {dest} ({len(data)} bytes)")
     return True
 
 def assemble_json(src_glob: str, dest: Path) -> bool:
-    parts = sorted(ROOT.glob(src_glob))
-    if not parts:
+    data = join_parts(src_glob)
+    if data is None:
         print(f"skip {dest}: no parts for {src_glob}")
         return False
-    data = "".join(p.read_text() for p in parts)
+    data = data.replace("\n", "")
     try:
         parsed = json.loads(data)
     except json.JSONDecodeError as e:
-        print(f"skip {dest}: incomplete/invalid JSON ({e}) from {len(parts)} parts")
+        print(f"skip {dest}: incomplete/invalid JSON ({e})")
         return False
     if not isinstance(parsed, dict) or not parsed:
         print(f"skip {dest}: empty or non-object JSON")
         return False
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(data)
-    print(f"wrote {dest} ({len(data)} bytes) from {len(parts)} parts, {len(parsed)} keys")
+    print(f"wrote {dest} ({len(data)} bytes, {len(parsed)} keys)")
     return True
 
 assemble("scripts/staging/play/part_*.txt", ROOT / "src/routes/play.$levelId.tsx")
