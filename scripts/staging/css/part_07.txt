@@ -1,0 +1,10 @@
+ero,
+  .jelly-well,
+  .globe-halo,
+  .globe-photo,
+  .globe-shine,
+  .voyage-drift-a,
+  .voyage-drift-b {
+    animation: none !important;
+  }
+}
