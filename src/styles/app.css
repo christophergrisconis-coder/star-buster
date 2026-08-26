@@ -1099,4 +1099,332 @@ html.light .chrome-nav {
 
 @keyframes shooting-streak {
   0% {
-    transform: 
+    transform: translate3d(0, 0, 0) rotate(28deg);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(240px, 160px, 0) rotate(28deg);
+    opacity: 0;
+  }
+}
+
+.next-orbit {
+  position: fixed;
+  inset: 0;
+  z-index: 85;
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  background: transparent;
+  pointer-events: none;
+}
+
+.next-orbit-jump {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  overflow: hidden;
+  background: transparent;
+  pointer-events: auto;
+}
+
+.next-orbit-share {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+  pointer-events: auto;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 214, 90, 0.16);
+  color: #ffd65a;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  padding: 8px 14px;
+}
+
+.next-orbit-veil {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 40%, rgba(36, 16, 72, 0.88), rgba(4, 2, 14, 0.94));
+  animation: next-orbit-veil 420ms ease-out forwards;
+}
+
+.next-orbit .warp-ring {
+  animation: warp-ring 1100ms ease-out infinite;
+}
+
+.next-orbit .warp-core {
+  animation: warp-flash 1100ms ease-out infinite;
+}
+
+.next-orbit .shooting-star {
+  animation: shooting-streak 920ms ease-out infinite;
+}
+
+.next-orbit-copy {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  padding: 24px 20px 48px;
+  animation: next-orbit-copy 520ms ease-out both;
+}
+
+@keyframes next-orbit-veil {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes next-orbit-copy {
+  from {
+    transform: translate3d(0, 18px, 0) scale(0.94);
+    opacity: 0;
+  }
+  to {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 1;
+  }
+}
+
+.nebula-silhouette {
+  filter: grayscale(1) brightness(0.35);
+  opacity: 0.45;
+}
+
+.purchase-nova {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle, rgba(255, 210, 74, 0.55), rgba(255, 43, 214, 0.28), transparent 62%);
+  animation: purchase-pop 700ms ease-out forwards;
+}
+
+@keyframes purchase-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  35% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.4);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .star-idle,
+  .star-spawn,
+  .star-explode,
+  .sun-flare-spin,
+  .sun-flare-pulse,
+  .star-eyes,
+  .nova-core,
+  .blocker-idle,
+  .marmalade-fx,
+  .lock-fx,
+  .star-flash,
+  .swap-spark,
+  .gravity-spark,
+  .sun-flare-burst,
+  .board-shake,
+  .board-pulse,
+  .play-board.board-shake,
+  .play-board.board-pulse,
+  .galaxy-swirl,
+  .gp-orbit-a,
+  .gp-orbit-b,
+  .gp-orbit-c,
+  .gp-orbit-d,
+  .gp-bands,
+  .gp-frost,
+  .gp-ember-glow,
+  .mute-burst,
+  .lock-deny,
+  .play-cta,
+  .warp-ring,
+  .warp-core,
+  .shooting-star,
+  .next-orbit-veil,
+  .next-orbit-copy,
+  .purchase-nova {
+    animation: none !important;
+  }
+
+  .star-idle,
+  .star-spawn,
+  .star-3d,
+  .sun-3d {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Persistent cinematic galaxy backdrop */
+.galaxy-fx {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  contain: paint;
+  background: #07060f;
+}
+
+.galaxy-fx[data-paused='true'] .galaxy-swirl,
+.galaxy-fx[data-paused='true'] .gp,
+.galaxy-fx[data-paused='true'] .gp-bands,
+.galaxy-fx[data-paused='true'] .gp-frost,
+.galaxy-fx[data-paused='true'] .gp-ember-glow {
+  animation-play-state: paused !important;
+}
+
+.galaxy-nebula {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 90% 55% at 50% -8%, rgba(72, 28, 120, 0.72) 0%, transparent 58%),
+    radial-gradient(ellipse 55% 40% at 88% 78%, rgba(12, 70, 82, 0.45) 0%, transparent 62%),
+    radial-gradient(ellipse 50% 38% at 8% 72%, rgba(90, 24, 110, 0.4) 0%, transparent 58%),
+    radial-gradient(ellipse 40% 28% at 70% 22%, rgba(255, 210, 74, 0.08) 0%, transparent 70%),
+    #07060f;
+}
+
+.galaxy-swirl {
+  position: absolute;
+  left: 42%;
+  top: -18%;
+  width: 140%;
+  height: 70%;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 210deg,
+    transparent 0deg,
+    rgba(255, 43, 214, 0.07) 40deg,
+    rgba(92, 225, 255, 0.05) 80deg,
+    transparent 130deg,
+    rgba(255, 210, 74, 0.06) 180deg,
+    transparent 240deg
+  );
+  filter: blur(28px);
+  opacity: 0.7;
+  transform: translate3d(-30%, 0, 0);
+  animation: galaxy-swirl-spin 140s linear infinite;
+}
+
+.galaxy-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.galaxy-vignette {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 70% 55% at 50% 42%, transparent 40%, rgba(5, 3, 12, 0.42) 100%),
+    linear-gradient(180deg, rgba(7, 6, 15, 0.15) 0%, transparent 18%, transparent 78%, rgba(7, 6, 15, 0.45) 100%);
+}
+
+.galaxy-fx--play .galaxy-vignette {
+  background:
+    radial-gradient(ellipse 58% 46% at 50% 48%, rgba(4, 3, 12, 0.78) 0%, rgba(4, 3, 12, 0.42) 48%, rgba(4, 3, 12, 0.2) 72%, transparent 100%),
+    radial-gradient(ellipse at center, transparent 36%, rgba(4, 3, 12, 0.62) 100%);
+}
+
+.galaxy-fx--play .galaxy-planets {
+  opacity: 0.32;
+}
+
+.galaxy-fx--play .galaxy-swirl {
+  opacity: 0.28;
+}
+
+/* Cinematic drifting scene plates (photo planets + nebula pans) */
+.cinema-scenes {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.cinema-scene {
+  position: absolute;
+  border-radius: 42%;
+  filter: blur(1.2px) saturate(1.15);
+  opacity: 0.34;
+  will-change: transform;
+  background-size: cover;
+  background-position: center;
+  box-shadow: 0 0 60px rgba(0, 0, 0, 0.35);
+}
+
+.cinema-scene--a {
+  width: min(78vw, 420px);
+  height: min(78vw, 420px);
+  left: -18%;
+  top: 8%;
+  background-image:
+    radial-gradient(circle at 35% 30%, rgba(255, 210, 74, 0.25), transparent 55%),
+    url('/voyage/planets/jupiter.png?v=5');
+  animation: cinema-drift-a 64s ease-in-out infinite alternate;
+}
+
+.cinema-scene--b {
+  width: min(56vw, 300px);
+  height: min(56vw, 300px);
+  right: -12%;
+  top: 22%;
+  background-image:
+    radial-gradient(circle at 60% 40%, rgba(92, 225, 255, 0.22), transparent 50%),
+    url('/voyage/planets/neptune.png?v=5');
+  animation: cinema-drift-b 78s ease-in-out infinite alternate;
+  opacity: 0.28;
+}
+
+.cinema-scene--c {
+  width: min(64vw, 340px);
+  height: min(64vw, 340px);
+  left: 18%;
+  bottom: -16%;
+  background-image:
+    radial-gradient(circle at 50% 45%, rgba(255, 43, 214, 0.18), transparent 52%),
+    url('/voyage/planets/mars.png?v=5');
+  animation: cinema-drift-c 88s ease-in-out infinite alternate;
+  opacity: 0.26;
+}
+
+.cinema-scene--d {
+  width: min(48vw, 260px);
+  height: min(48vw, 260px);
+  right: 10%;
+  bottom: 12%;
+  background-image:
+    radial-gradient(circle at 40% 35%, rgba(180, 230, 255, 0.2), transparent 55%),
+    url('/voyage/planets/europa.png?v=5');
+  animation: cinema-drift-d 70s ease-in-out infinite alternate;
+  opacity: 0.22;
+}
+
+.galaxy-fx--play .cinema-scene {
+  op
