@@ -357,4 +357,391 @@ function PlayPage() {
           setToast(bits.join(' · '))
         }
       }
-      if (e.type === 'status'
+      if (e.type === 'status' && e.status === 'lost') {
+        synth.lose()
+        if (!isLesson) bumpCometStreak(peakTail, false)
+      }
+    }
+  }, [state?.events])
+
+  useEffect(() => {
+    if (!state || state.status !== 'playing' || state.cometTail <= 0) {
+      if (!state || state.cometTail <= 0) {
+        tailDeadline.current = null
+        setCometRemainMs(0)
+      }
+      return
+    }
+    const now = performance.now()
+    if (boardBusy) {
+      if (tailDeadline.current != null) {
+        tailPause.current = Math.max(0, tailDeadline.current - now)
+        tailDeadline.current = null
+      }
+      setCometRemainMs(tailPause.current || cometMs)
+      return
+    }
+    if (tailDeadline.current == null) {
+      const remaining = tailPause.current > 0 ? tailPause.current : cometMs
+      tailDeadline.current = now + remaining
+      tailPause.current = 0
+    }
+    const tick = () => {
+      const deadline = tailDeadline.current
+      if (deadline == null) return
+      const left = Math.max(0, deadline - performance.now())
+      setCometRemainMs(left)
+      if (left <= 0) {
+        tailDeadline.current = null
+        if (shieldArmed.current) {
+          shieldArmed.current = false
+          tailPause.current = cometMs
+          tailDeadline.current = performance.now() + cometMs
+          setCometRemainMs(cometMs)
+          return
+        }
+        setState((s) => (s && s.cometTail > 0 ? reduce(s, { type: 'decay-comet-tail' }) : s))
+      }
+    }
+    tick()
+    const interval = window.setInterval(tick, 50)
+    return () => window.clearInterval(interval)
+  }, [state?.cometTail, state?.status, boardBusy, cometMs])
+
+  useEffect(() => {
+    if (!state) return
+    if (state.cometTail > 0) {
+      tailPause.current = cometMs
+      if (!boardBusy) tailDeadline.current = performance.now() + cometMs
+      setCometRemainMs(cometMs)
+    }
+  }, [state?.cometTail])
+
+  if (guestBlocked) {
+    return (
+      <div className="space-y-3 p-4">
+        <p className="text-[13px] text-white/70">This orbit is locked. Sign in to continue the voyage.</p>
+        <AuthPanel heading="First-play gate" />
+      </div>
+    )
+  }
+  if (!level) {
+    return <p className="p-4">Unknown stage.</p>
+  }
+  if (!state) return <BoardSkeleton />
+
+  const bumpKit = () => setKitTick((n) => n + 1)
+
+  const tapBooster = (index: number) => {
+    if (state.status !== 'playing' || noBoosters) return
+    if (booster === 'hammer') {
+      if (tutorialHammer > 0) setTutorialHammer(0)
+      else if (!consumeItem('hammer')) {
+        setBooster(null)
+        return
+      }
+      bumpKit()
+      setState((s) => (s ? reduce(s, { type: 'hammer', index }) : s))
+      setBooster(null)
+      if (lesson?.wait === 'booster') advanceLesson()
+      return
+    }
+    if (booster === 'well') {
+      if (!consumeItem('gravity-well')) {
+        setBooster(null)
+        return
+      }
+      bumpKit()
+      setState((s) => (s ? reduce(s, { type: 'well', index }) : s))
+      setBooster(null)
+      return
+    }
+    if (booster === 'splash') {
+      if (!isSwappable(state.cells[index]!)) {
+        setDenyNote('Tap a live star to splash.')
+        window.setTimeout(() => setDenyNote(null), 1600)
+        return
+      }
+      if (!consumeItem('color-splash')) {
+        setBooster(null)
+        return
+      }
+      bumpKit()
+      setState((s) => (s ? reduce(s, { type: 'color-splash', index }) : s))
+      setBooster(null)
+      return
+    }
+    if (booster === 'flare') {
+      if (!isSwappable(state.cells[index]!)) {
+        setDenyNote('Tap a live star to plant the flare.')
+        window.setTimeout(() => setDenyNote(null), 1600)
+        return
+      }
+      if (!consumeAny([...FLARE_ITEM_IDS])) {
+        setBooster(null)
+        return
+      }
+      bumpKit()
+      setState((s) => {
+        if (!s) return s
+        const placed = reduce(s, { type: 'spawn-special', index, special: 'wrapped' })
+        return reduce(placed, { type: 'ignite-special', index })
+      })
+      setBooster(null)
+    }
+  }
+
+  const nextId = Math.min(250, id + 1)
+  const nextOpen = canPlay(nextId)
+  const nextLevel = LEVEL_BY_ID[nextId]
+  const nebulaAdvance = Boolean(level && nextLevel && nextLevel.nebulaId !== level.nebulaId)
+  const nextLabel = isLesson
+    ? (LEVEL_BY_ID[1]?.name ?? 'Amber Veil 1-1')
+    : nebulaAdvance
+      ? (CAMPAIGN.nebulas.find((n) => n.id === nextLevel?.nebulaId)?.name ?? 'Next world')
+      : (nextLevel?.name ?? `Orbit ${nextId}`)
+  const lostEvent = state.events.find((e) => e.type === 'status' && e.status === 'lost')
+  const loseReason =
+    lostEvent && lostEvent.type === 'status' && lostEvent.reason ? lostEvent.reason : 'Orbit goal not cleared'
+
+  return (
+    <div className="relative space-y-3 px-3 pt-3">
+      <RoundFinaleFX
+        active={state.status === 'finale' || state.status === 'won'}
+        intensity={state.status === 'won' ? 'won' : 'finale'}
+      />
+      <div className="flex items-center justify-between">
+        <button
+          type="button"
+          onClick={() => {
+            if (!isLesson && state.status === 'playing') spendLife()
+            void navigate({ to: '/' })
+          }}
+          className="text-[12px] text-white/60"
+        >
+          ← Map
+        </button>
+        <h1 className="display text-[22px] text-gold">{level.name}</h1>
+        {isLesson ? (
+          <button type="button" className="tutorial-skip-tab tutorial-skip-tab--inline" onClick={skipSchool}>
+            Skip tutorial
+          </button>
+        ) : (
+          <span className="text-[11px] text-white/50">#{level.id}</span>
+        )}
+      </div>
+      {nebulaChallenge ? (
+        <p className="rounded-full border border-magenta/40 bg-magenta/10 px-3 py-1 text-center text-[11px] text-magenta">
+          {nebulaChallenge.tier === 'high' ? `High risk · ${nebulaChallenge.title}` : nebulaChallenge.title}
+          {nebulaChallenge.modifiers.cometTailMin ? ` · Tail x${nebulaChallenge.modifiers.cometTailMin}` : ''}
+        </p>
+      ) : null}
+      <HUD
+        state={state}
+        level={level}
+        onHint={() => {
+          if (hintCount > 0 && !spendCoins(HINT_COIN_COST)) {
+            setDenyNote(`Need ${HINT_COIN_COST} coins for another hint`)
+            window.setTimeout(() => setDenyNote(null), 1600)
+            return
+          }
+          setHintCount((n) => n + 1)
+          hint.requestHint(state)
+        }}
+        hintBusy={hint.busy}
+        coachLine={hint.coachLine}
+        coachError={hint.coachError}
+        hintCost={hintCount === 0 ? 0 : HINT_COIN_COST}
+        cometRemainMs={cometRemainMs}
+        cometDurationMs={cometMs}
+        challenges={challenges}
+        completedChallenges={typeof window === 'undefined' ? [] : completedChallenges(id)}
+        lessonFocus={lesson?.focus === 'goal' || lesson?.focus === 'comet' || lesson?.focus === 'challenges' ? lesson.focus : null}
+      />
+      {lesson ? (
+        <TutorialCoach
+          step={lesson}
+          index={lessonIndex}
+          total={LESSONS.length}
+          onNext={advanceLesson}
+          onSkip={skipSchool}
+        />
+      ) : null}
+      {denyNote ? <p className="text-center text-[12px] text-magenta">{denyNote}</p> : null}
+      {kitNote ? <p className="text-center text-[12px] text-gold">{kitNote}</p> : null}
+      <div className="relative">
+        <Board
+          state={state}
+          hint={hint.hint}
+          skin={skin}
+          interaction={booster ? 'cell' : 'swap'}
+          allowedPair={lesson?.pair ?? null}
+          spotlight={lesson?.spotlight}
+          onBusyChange={setBoardBusy}
+          onDenied={(index, reason) => {
+            synth.invalid()
+            setDenyNote(
+              reason === 'locked'
+                ? 'Frosting, chocolate, and swirls stay put. Stars — even locked ones — can slide.'
+                : 'Follow the glowing pair — the rest of the board waits.',
+            )
+            window.setTimeout(() => setDenyNote(null), 1800)
+            void index
+          }}
+          onSwap={(a, b) => {
+            if (state.status !== 'playing') return
+            const next = reduce(state, { type: 'swap', a, b })
+            setState(next)
+            if (lesson?.wait === 'swap') advanceLesson()
+            if (
+              lesson?.wait === 'ignite' &&
+              (a === TUTORIAL_SUN || b === TUTORIAL_SUN) &&
+              next.events.some((e) => e.type === 'wave')
+            ) {
+              advanceLesson()
+            }
+          }}
+          onIgnite={(index) => {
+            if (state.status !== 'playing') return
+            setState((s) => (s ? reduce(s, { type: 'ignite-special', index }) : s))
+            if (lesson?.wait === 'ignite') advanceLesson()
+          }}
+          onCell={tapBooster}
+          onWave={(wave) => {
+            synth.pop(wave.combo)
+            synth.explode(wave.blast)
+            if (wave.word) synth.banner(wave.word)
+            const hasStriped = wave.spawnedSpecials.some((s) => s.special === 'striped-h' || s.special === 'striped-v')
+            const hasColorBomb = wave.spawnedSpecials.some((s) => s.special === 'color-bomb')
+            if (hasColorBomb) synth.colorBombBlast()
+            else if (hasStriped) synth.stripedClear()
+          }}
+          pickup={pickup}
+          onCollectPickup={() => {
+            if (!pickup) return
+            stowPickup(pickup.item)
+          }}
+        />
+        <ChallengeToast text={toast} />
+      </div>
+      {noBoosters ? (
+        <p className="text-center text-[11px] text-white/50">Naked sky — boosters sealed for this run</p>
+      ) : (
+        <BoosterTray
+          armed={booster}
+          disabled={state.status !== 'playing' || boardBusy}
+          lesson={lesson?.focus === 'tray'}
+          freeHammer={tutorialHammer > 0}
+          counts={kitCounts}
+          sector={level.sectorId}
+          onArm={(id) => setBooster((cur) => (cur === id ? null : id))}
+          onInstant={(id: InstantBooster) => {
+            if (state.status !== 'playing' || boardBusy) return
+            if (id === 'moves') {
+              if (!consumeItem('moves-5')) return
+              bumpKit()
+              setState((s) => (s ? reduce(s, { type: 'add-moves', count: 5 }) : s))
+              return
+            }
+            if (id === 'shuffle') {
+              if (!consumeItem('star-shuffle')) return
+              bumpKit()
+              setState((s) => (s ? reduce(s, { type: 'shuffle' }) : s))
+              return
+            }
+            if (id === 'shield') {
+              if (shieldArmed.current) {
+                setKitNote('Wake is already armed')
+                window.setTimeout(() => setKitNote(null), 1600)
+                return
+              }
+              if (!consumeAny(kitItemIds(slotById('shield')))) return
+              shieldArmed.current = true
+              bumpKit()
+              setKitNote('Wake shield armed for the next fade')
+              window.setTimeout(() => setKitNote(null), 1800)
+              return
+            }
+            const deep = itemCount('orbit-time-deep') > 0
+            const freeze = itemCount('freeze-orbit') > 0
+            if (deep ? !consumeItem('orbit-time-deep') : freeze ? !consumeItem('freeze-orbit') : !consumeItem('orbit-time')) {
+              return
+            }
+            bumpKit()
+            const add = deep ? 35 : freeze ? 25 : 20
+            setState((s) => (s ? { ...s, timeLeft: s.timeLeft + add } : s))
+          }}
+        />
+      )}
+      {badge ? (
+        <p className="text-center text-[12px] text-gold">{badge}</p>
+      ) : null}
+      {state.status === 'won' && !orbitJump ? (
+        <div className="rounded-2xl border border-gold/40 bg-black/40 p-3 text-center">
+          <p className="display text-[28px] text-gold">{isLesson ? 'Flight School clear' : 'Stage clear'}</p>
+          {isLesson ? (
+            <Link
+              to="/play/$levelId"
+              params={{ levelId: '1' }}
+              search={{ challenge: undefined, seed: undefined }}
+              className="mt-2 inline-block text-magenta"
+            >
+              Enter Amber Veil 1-1 →
+            </Link>
+          ) : nextOpen && id < 250 ? (
+            <button type="button" className="mt-2 text-magenta" onClick={jumpNextOrbit}>
+              Next orbit →
+            </button>
+          ) : id >= 250 ? (
+            <p className="mt-2 text-[13px] text-gold">Voyage complete.</p>
+          ) : (
+            <Link to="/auth" className="mt-2 inline-block text-magenta">
+              Sign in to continue →
+            </Link>
+          )}
+        </div>
+      ) : null}
+      {orbitJump ? (
+        <NextOrbit
+          title={isLesson ? 'Flight School clear' : isDaily ? 'Daily orbit clear' : 'Orbit clear'}
+          score={state.score}
+          shareHref={isDaily ? shareOrbitHref(level.seed) : undefined}
+          nextName={
+            isDaily
+              ? 'Daily rank'
+              : id >= 250 && !isLesson
+              ? 'Voyage complete'
+              : nebulaAdvance
+                ? `Next world · ${nextLabel}`
+                : nextOpen || isLesson
+                  ? nextLabel
+                  : 'Sign in to continue'
+          }
+          onJump={jumpNextOrbit}
+        />
+      ) : null}
+      {state.status === 'lost' ? (
+        <FailSheet
+          reason={loseReason}
+          how={howToClear(state.objective)}
+          lives={livesLeft}
+          onContinue={() => {
+            setState((s) => (s ? reduce(s, { type: 'resume', extraMoves: CONTINUE_MOVES }) : s))
+            setLivesLeft(getInventory().lives)
+          }}
+          onRetry={() => {
+            resetRun(createGame(level))
+            setLivesLeft(getInventory().lives)
+          }}
+          onAbandon={() => {
+            setLivesLeft(getInventory().lives)
+            void navigate({ to: '/' })
+          }}
+        />
+      ) : null}
+      {state.status === 'finale' ? (
+        <p className="text-center text-[13px] text-magenta">Starburst Finale…</p>
+      ) : null}
+    </div>
+  )
+}
