@@ -44,7 +44,7 @@ type Nova = {
 function budget(intensity: Intensity, width: number) {
   const mobile = width <= 420
   if (intensity === 'play') {
-    return { far: 26, mid: 14, near: 7, dust: 5, meteorMin: 9000, meteorMax: 18000, nova: false }
+    return { far: 34, mid: 18, near: 10, dust: 7, meteorMin: 4200, meteorMax: 9000, nova: true }
   }
   if (mobile) {
     return { far: 42, mid: 24, near: 11, dust: 9, meteorMin: 2800, meteorMax: 7200, nova: true }
@@ -419,6 +419,12 @@ export function UniverseBackground({ intensity }: { intensity?: Intensity }) {
     >
       <div className="galaxy-nebula" />
       <div className="galaxy-swirl" />
+      <div className="cinema-scenes">
+        <div className="cinema-scene cinema-scene--a" />
+        <div className="cinema-scene cinema-scene--b" />
+        <div className="cinema-scene cinema-scene--c" />
+        <div className="cinema-scene cinema-scene--d" />
+      </div>
       <canvas ref={canvasRef} className="galaxy-canvas" />
       <Planets />
       <div className="galaxy-vignette" />

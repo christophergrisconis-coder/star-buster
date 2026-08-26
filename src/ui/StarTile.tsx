@@ -1,9 +1,8 @@
-import { useId, useEffect, useState } from 'react'
+import { useId } from 'react'
 import { SKIN_FILTERS } from '~/data/store'
 import type { Cell, StarColor } from '~/engine/types'
-import { isCoAdminPilot } from '~/lib/owner'
-import { LumaStar } from './LumaStar'
-import { STAR5, sunRayPath } from './starGeometry'
+import { starArtSrc } from './starArt'
+import { sunRayPath } from './starGeometry'
 
 const FILLS: Record<StarColor, { a: string; b: string; c: string; glow: string; brow: string }> = {
   gold: { a: '#fff8d0', b: '#ffd24a', c: '#c2410c', glow: '#ffd24a', brow: '#7a2e09' },
@@ -16,122 +15,38 @@ const FILLS: Record<StarColor, { a: string; b: string; c: string; glow: string; 
 
 const INGREDIENT_FILL = { a: '#ffe0c2', b: '#ff8a4c', c: '#7a1d1d', glow: '#ff8a4c', brow: '#4a1208' }
 
-type FaceKind = 'star' | 'sun' | 'nova'
-
-/** Original cartoon face — big eyes, highlights, brows, smile. */
-export function StarFace({ kind, brow }: { kind: FaceKind; brow: string }) {
-  if (kind === 'sun') {
-    return (
-      <g className="star-face">
-        <g className="star-eyes">
-          <path
-            d="M20.8 24.2 Q25.8 21.2 30.4 24.4"
-            fill="none"
-            stroke={brow}
-            strokeWidth="1.9"
-            strokeLinecap="round"
-          />
-          <path
-            d="M33.6 24.4 Q38.2 21.2 43.2 24.2"
-            fill="none"
-            stroke={brow}
-            strokeWidth="1.9"
-            strokeLinecap="round"
-          />
-          <ellipse cx="25.8" cy="29.6" rx="5.8" ry="6.6" fill="#fffef6" stroke={brow} strokeWidth="0.85" />
-          <ellipse cx="38.2" cy="29.6" rx="5.8" ry="6.6" fill="#fffef6" stroke={brow} strokeWidth="0.85" />
-          <ellipse cx="26.5" cy="30.6" rx="3.25" ry="3.55" fill="#2a1208" />
-          <ellipse cx="38.9" cy="30.6" rx="3.25" ry="3.55" fill="#2a1208" />
-          <circle cx="24.7" cy="28.1" r="1.45" fill="#fff" />
-          <circle cx="37.1" cy="28.1" r="1.45" fill="#fff" />
-          <circle cx="27.6" cy="32.2" r="0.55" fill="#fff" opacity="0.7" />
-          <circle cx="40" cy="32.2" r="0.55" fill="#fff" opacity="0.7" />
-        </g>
-        <path
-          d="M24.8 37.6 Q32 44.2 39.2 37.6"
-          fill="none"
-          stroke={brow}
-          strokeWidth="2.15"
-          strokeLinecap="round"
-        />
-        <circle cx="22.4" cy="35.2" r="1.7" fill="#ff7a59" opacity="0.5" />
-        <circle cx="41.6" cy="35.2" r="1.7" fill="#ff7a59" opacity="0.5" />
-      </g>
-    )
-  }
-
-  if (kind === 'nova') {
-    return (
-      <g className="star-face">
-        <g className="star-eyes">
-          <path
-            d="M20.5 22.5 Q25.8 19.8 30.2 22.8"
-            fill="none"
-            stroke="#ffd24a"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-          />
-          <path
-            d="M33.8 22.8 Q38.2 19.8 43.5 22.5"
-            fill="none"
-            stroke="#ffd24a"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-          />
-          <ellipse cx="25.6" cy="28.2" rx="6.1" ry="7" fill="#f7e9ff" stroke="#ffd24a" strokeWidth="0.9" />
-          <ellipse cx="38.4" cy="28.2" rx="6.1" ry="7" fill="#f7e9ff" stroke="#ffd24a" strokeWidth="0.9" />
-          <ellipse cx="26.3" cy="29.2" rx="3.4" ry="3.8" fill="#1a0828" />
-          <ellipse cx="39.1" cy="29.2" rx="3.4" ry="3.8" fill="#1a0828" />
-          <circle cx="24.4" cy="26.6" r="1.5" fill="#fff" />
-          <circle cx="37.2" cy="26.6" r="1.5" fill="#fff" />
-        </g>
-        <path
-          d="M24.2 36.4 Q32 42.6 39.8 36.4"
-          fill="none"
-          stroke="#ffd24a"
-          strokeWidth="2.1"
-          strokeLinecap="round"
-        />
-      </g>
-    )
-  }
-
+/** Custom star logo art (Anaclara) with SVG special-mark overlays. */
+function CustomStarArt({
+  src,
+  special,
+  glow,
+  powerPlay,
+}: {
+  src: string
+  special: Cell['special']
+  glow: string
+  powerPlay?: boolean
+}) {
   return (
-    <g className="star-face">
-      <g className="star-eyes">
-        <path
-          d="M19.6 21.6 Q25.6 18.4 30.6 21.8"
-          fill="none"
-          stroke={brow}
-          strokeWidth="2.05"
-          strokeLinecap="round"
-        />
-        <path
-          d="M33.4 21.8 Q38.4 18.4 44.4 21.6"
-          fill="none"
-          stroke={brow}
-          strokeWidth="2.05"
-          strokeLinecap="round"
-        />
-        <ellipse cx="25.4" cy="27.8" rx="6.6" ry="7.6" fill="#fffef6" stroke={brow} strokeWidth="0.95" />
-        <ellipse cx="38.6" cy="27.8" rx="6.6" ry="7.6" fill="#fffef6" stroke={brow} strokeWidth="0.95" />
-        <ellipse cx="26.2" cy="28.9" rx="3.55" ry="4.05" fill="#1a0c08" />
-        <ellipse cx="39.4" cy="28.9" rx="3.55" ry="4.05" fill="#1a0c08" />
-        <circle cx="24.1" cy="25.9" r="1.7" fill="#fff" />
-        <circle cx="37.3" cy="25.9" r="1.7" fill="#fff" />
-        <circle cx="27.5" cy="30.6" r="0.6" fill="#fff" opacity="0.75" />
-        <circle cx="40.7" cy="30.6" r="0.6" fill="#fff" opacity="0.75" />
-      </g>
-      <path
-        d="M24.0 36.2 Q32 43.4 40.0 36.2"
-        fill="none"
-        stroke={brow}
-        strokeWidth="2.25"
-        strokeLinecap="round"
+    <div className="relative h-full w-full">
+      <div
+        className="pointer-events-none absolute inset-[-8%] rounded-full opacity-55 blur-[6px]"
+        style={{ background: `radial-gradient(circle, ${glow} 0%, transparent 68%)` }}
+        aria-hidden
       />
-      <circle cx="21.6" cy="34.4" r="1.85" fill="#ff7a59" opacity="0.45" />
-      <circle cx="42.4" cy="34.4" r="1.85" fill="#ff7a59" opacity="0.45" />
-    </g>
+      <img
+        src={src}
+        alt=""
+        draggable={false}
+        className="star-art relative z-[1] h-full w-full object-contain drop-shadow-[0_2px_4px_rgba(0,0,0,0.45)]"
+      />
+      <svg viewBox="0 0 64 64" className="pointer-events-none absolute inset-0 z-[2] h-full w-full overflow-visible" aria-hidden>
+        {powerPlay ? (
+          <circle cx="32" cy="32" r="30" fill="none" stroke="#ffd24a" strokeWidth="1.4" opacity="0.75" />
+        ) : null}
+        <SpecialMarks special={special} />
+      </svg>
+    </div>
   )
 }
 
@@ -187,12 +102,10 @@ function SunCore({
   special: Cell['special']
   powerPlay: boolean
 }) {
-  const g = `sun-body-${id}`
-  const corona = `sun-corona-${id}`
   const rays = `sun-rays-${id}`
   return (
     <div className={`sun-3d ${powerPlay ? 'sun-power' : ''}`}>
-      <div className="sun-flare-spin pointer-events-none absolute inset-[-6%]">
+      <div className="sun-flare-spin pointer-events-none absolute inset-[-10%]">
         <div className="sun-flare-pulse h-full w-full">
           <svg viewBox="0 0 64 64" className="h-full w-full overflow-visible">
             <defs>
@@ -203,33 +116,16 @@ function SunCore({
               </radialGradient>
             </defs>
             <circle cx="32" cy="32" r="28" fill={fill.glow} opacity="0.22" />
-            <path d={sunRayPath(18, 15.2)} fill={`url(#${rays})`} opacity="0.96" />
+            <path d={sunRayPath(18, 15.2)} fill={`url(#${rays})`} opacity="0.9" />
           </svg>
         </div>
       </div>
-      <svg viewBox="0 0 64 64" className="star-art relative h-full w-full overflow-visible">
-        <defs>
-          <radialGradient id={g} cx="34%" cy="30%">
-            <stop offset="0%" stopColor="#fffce8" />
-            <stop offset="22%" stopColor={fill.a} />
-            <stop offset="58%" stopColor={fill.b} />
-            <stop offset="100%" stopColor={fill.c} />
-          </radialGradient>
-          <radialGradient id={corona} cx="50%" cy="50%">
-            <stop offset="40%" stopColor={fill.glow} stopOpacity="0.55" />
-            <stop offset="100%" stopColor={fill.glow} stopOpacity="0" />
-          </radialGradient>
-        </defs>
-        <circle cx="32" cy="32" r="24" fill={`url(#${corona})`} />
-        <circle cx="32" cy="32" r="17.4" fill={fill.glow} opacity="0.38" />
-        <circle cx="32" cy="32" r="15.6" fill={fill.b} stroke="#fff8e8" strokeWidth="1.25" />
-        <circle cx="32" cy="32" r="15.6" fill={`url(#${g})`} />
-        {powerPlay ? (
-          <circle cx="32" cy="32" r="18.6" fill="none" stroke="#ffd24a" strokeWidth="1.4" opacity="0.85" />
-        ) : null}
-        <SpecialMarks special={special} />
-        <StarFace kind="sun" brow={fill.brow} />
-      </svg>
+      <CustomStarArt
+        src={starArtSrc('gold', { heart: true })}
+        special={special}
+        glow={fill.glow}
+        powerPlay={powerPlay}
+      />
     </div>
   )
 }
@@ -239,79 +135,33 @@ export function BlazingSun({ id, special }: { id: string; special: Cell['special
 }
 
 export function SharpStar({
-  id,
+  id: _id,
   fill,
   special,
+  color,
+  ingredient,
 }: {
   id: string
   fill: { a: string; b: string; c: string; glow: string; brow: string }
   special: Cell['special']
+  color?: StarColor | null
+  ingredient?: boolean
 }) {
-  const g = `sg-${id}`
-  const glow = `sglow-${id}`
+  void _id
   return (
-    <svg viewBox="0 0 64 64" className="star-art relative h-full w-full overflow-visible">
-      <defs>
-        <radialGradient id={g} cx="34%" cy="28%">
-          <stop offset="0%" stopColor="#fff" />
-          <stop offset="32%" stopColor={fill.a} />
-          <stop offset="70%" stopColor={fill.b} />
-          <stop offset="100%" stopColor={fill.c} />
-        </radialGradient>
-        <filter id={glow} x="-18%" y="-18%" width="136%" height="136%">
-          <feGaussianBlur stdDeviation="1.05" result="b" />
-          <feMerge>
-            <feMergeNode in="b" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-      </defs>
-      <path d={STAR5} fill={fill.glow} opacity="0.5" filter={`url(#${glow})`} />
-      <path d={STAR5} fill={fill.c} opacity="0.7" transform="translate(1.3 1.8)" />
-      <path
-        d={STAR5}
-        fill={fill.b}
-        stroke="#fff8"
-        strokeWidth="1.15"
-        strokeLinejoin="miter"
-        strokeMiterlimit="8"
-      />
-      <path
-        d={STAR5}
-        fill={`url(#${g})`}
-        stroke="none"
-        strokeLinejoin="miter"
-        strokeMiterlimit="8"
-      />
-      <SpecialMarks special={special} />
-      <StarFace kind="star" brow={fill.brow} />
-    </svg>
+    <CustomStarArt
+      src={starArtSrc(color ?? null, { ingredient })}
+      special={special}
+      glow={fill.glow}
+    />
   )
 }
 
-export function NovaBomb({ id }: { id: string }) {
-  const g = `nova-body-${id}`
+export function NovaBomb({ id: _id }: { id: string }) {
+  void _id
   return (
     <div className="star-3d">
-      <svg viewBox="0 0 64 64" className="star-art h-full w-full overflow-visible">
-        <defs>
-          <radialGradient id={g} cx="35%" cy="30%">
-            <stop offset="0%" stopColor="#fff" />
-            <stop offset="28%" stopColor="#c084fc" />
-            <stop offset="70%" stopColor="#1a0a28" />
-          </radialGradient>
-        </defs>
-        <path d={STAR5} fill="#c084fc" opacity="0.35" />
-        <path
-          d={STAR5}
-          fill={`url(#${g})`}
-          stroke="#ffd24a"
-          strokeWidth="1.6"
-          strokeLinejoin="miter"
-          strokeMiterlimit="8"
-        />
-        <StarFace kind="nova" brow="#ffd24a" />
-      </svg>
+      <CustomStarArt src={starArtSrc(null, { nova: true })} special="color-bomb" glow="#c084fc" powerPlay />
     </div>
   )
 }
@@ -339,10 +189,6 @@ export function StarTile({
   skin?: string
 }) {
   const uid = useId().replace(/:/g, '')
-  const [lumaSky, setLumaSky] = useState(false)
-  useEffect(() => {
-    setLumaSky(isCoAdminPilot())
-  }, [])
   const fill = cell.ingredient
     ? INGREDIENT_FILL
     : cell.color
@@ -394,15 +240,19 @@ export function StarTile({
           className={`h-full w-full ${motion} ${specialMotion(cell.special)}`}
           style={{ animationDelay: `${delay ?? 0}ms` }}
         >
-          {lumaSky && !cell.ingredient ? (
-            <LumaStar color={cell.color} special={cell.special} />
-          ) : isColorBomb ? (
+          {isColorBomb ? (
             <NovaBomb id={uid} />
           ) : powerPlay ? (
             <SunCore id={uid} fill={fill} special={cell.special} powerPlay />
           ) : (
             <div className="star-3d">
-              <SharpStar id={uid} fill={fill} special={cell.special} />
+              <SharpStar
+                id={uid}
+                fill={fill}
+                special={cell.special}
+                color={cell.color}
+                ingredient={!!cell.ingredient}
+              />
             </div>
           )}
         </div>
