@@ -1,0 +1,27 @@
+name: Assemble staged sources
+on:
+  push:
+    paths:
+      - "scripts/staging/**"
+      - "scripts/assemble-staged-sources.py"
+  workflow_dispatch:
+jobs:
+  assemble:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assemble sources
+        run: python3 scripts/assemble-staged-sources.py
+      - name: Commit assembled files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A "src/routes/play.$levelId.tsx" "src/styles/app.css" || true
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Add cinema scene CSS and round finale FX hook on play route"
+            git push
+          fi
