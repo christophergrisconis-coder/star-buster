@@ -10,7 +10,7 @@ import {
   type AuthProviderId,
 } from '~/lib/authPrefs'
 import { mergeGuestIntoUser } from '~/lib/progress'
-import { signInOwner } from '~/lib/owner'
+import { signInOwner, loginWithPasscode } from '~/lib/owner'
 
 type OAuthId = Exclude<AuthProviderId, 'email'>
 const OAUTH: OAuthId[] = ['google', 'apple', 'azure']
@@ -20,14 +20,18 @@ export function AuthPanel({ heading = 'Docking Bay' }: { heading?: string }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
   const [mode, setMode] = useState<'in' | 'up'>('in')
   const [remember, setRemember] = useState(getRememberMe)
   const last = getLastProvider()
-  const [showAll, setShowAll] = useState(!last)
+  const [showAllOAuth, setShowAllOAuth] = useState(false)
 
   const finish = () => {
     mergeGuestIntoUser()
-    nav({ to: '/profile' })
+    setSuccess('Docking authorized! Welcome aboard.')
+    setTimeout(() => {
+      nav({ to: '/profile' })
+    }, 600)
   }
 
   const run = async (fn: () => Promise<void>) => {
@@ -52,84 +56,53 @@ export function AuthPanel({ heading = 'Docking Bay' }: { heading?: string }) {
       if (err) throw err
     })
 
-  const primary = last && last !== 'email' ? last : null
-  const others = OAUTH.filter((p) => p !== primary)
+  const handleOwnerQuickFill = (targetEmail: string) => {
+    setEmail(targetEmail)
+    setError(null)
+  }
 
   return (
-    <div className="space-y-4">
-      <h1 className="display text-[28px] text-gold">{heading}</h1>
-      <p className="text-[13px] text-white/70">
-        Guests may fly levels 1–3. Sign in to merge that progress and open the full 250-level lock.
-      </p>
-      {!supabaseConfigured() ? (
-        <p className="rounded-xl border border-gold/30 bg-black/30 p-3 text-[12px] text-gold/90">
-          Cloud docking is offline. Add Supabase keys to enable Google, Apple, and Microsoft sign-in.
+    <div className="space-y-4 max-w-md mx-auto">
+      <div>
+        <h1 className="display text-[28px] text-gold">{heading}</h1>
+        <p className="text-[13px] text-white/70">
+          Sign in to unlock all 330 campaign orbits, save your pilot progress, and claim daily supply crates.
         </p>
-      ) : null}
+      </div>
 
-      {primary ? (
-        <button
-          type="button"
-          className="w-full rounded-full bg-magenta py-3 font-semibold"
-          onClick={() => oauth(primary)}
-        >
-          Continue with {providerLabel(primary)}
-        </button>
-      ) : (
-        <div className="space-y-2">
-          {OAUTH.map((p) => (
-            <button
-              key={p}
-              type="button"
-              className="w-full rounded-full border border-gold/40 py-3 text-gold"
-              onClick={() => oauth(p)}
-            >
-              Sign in with {providerLabel(p)}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {primary && (showAll || others.length) ? (
-        showAll ? (
-          <div className="space-y-2">
-            {others.map((p) => (
-              <button
-                key={p}
-                type="button"
-                className="w-full rounded-full border border-white/20 py-2.5 text-[13px] text-white/80"
-                onClick={() => oauth(p)}
-              >
-                Sign in with {providerLabel(p)}
-              </button>
-            ))}
-          </div>
-        ) : (
-          <button type="button" className="w-full text-[12px] text-white/50" onClick={() => setShowAll(true)}>
-            Other docking methods
+      {/* Quick Select Buttons for Admin & Co-Admin */}
+      <div className="rounded-2xl border border-pink-500/30 bg-gradient-to-r from-pink-950/20 via-purple-950/20 to-void/40 p-3 space-y-2">
+        <p className="text-[11px] font-bold uppercase tracking-wider text-pink-300">✦ Quick Pilot Docking</p>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => handleOwnerQuickFill('ana.rankin96@gmail.com')}
+            className={`rounded-xl border p-2.5 text-center text-[12px] font-bold transition-all ${
+              email === 'ana.rankin96@gmail.com'
+                ? 'border-pink-400 bg-pink-500/20 text-pink-200 shadow-[0_0_15px_rgba(236,72,153,0.4)]'
+                : 'border-pink-500/30 bg-pink-950/30 text-pink-300 hover:bg-pink-900/40'
+            }`}
+          >
+            💖 Anaclara (Co-Admin)
           </button>
-        )
-      ) : null}
+          <button
+            type="button"
+            onClick={() => handleOwnerQuickFill('admnowner@advancedcreationstudio.com')}
+            className={`rounded-xl border p-2.5 text-center text-[12px] font-bold transition-all ${
+              email === 'admnowner@advancedcreationstudio.com'
+                ? 'border-gold bg-gold/20 text-gold shadow-[0_0_15px_#ffd24a55]'
+                : 'border-gold/30 bg-black/40 text-gold hover:bg-gold/10'
+            }`}
+          >
+            ⚡ Chris (Admin)
+          </button>
+        </div>
+      </div>
 
-      <label className="flex items-center gap-2 text-[13px] text-white/80">
-        <input
-          type="checkbox"
-          checked={remember}
-          onChange={(e) => {
-            setRemember(e.target.checked)
-            setRememberMe(e.target.checked)
-          }}
-        />
-        Remember me
-      </label>
-      <p className="text-[11px] text-white/45">
-        Unchecked keeps the session in this tab only — it will not survive a browser restart.
-      </p>
-
-      <details className="rounded-xl border border-white/10 bg-black/20 p-3">
-        <summary className="cursor-pointer text-[12px] text-white/60">Email / password</summary>
+      {/* Primary Email & Password Form */}
+      <div className="rounded-2xl border border-white/15 bg-white/5 p-4 shadow-lg">
         <form
-          className="mt-3 space-y-3"
+          className="space-y-3"
           onSubmit={(e) => {
             e.preventDefault()
             void run(async () => {
@@ -155,52 +128,128 @@ export function AuthPanel({ heading = 'Docking Bay' }: { heading?: string }) {
             })
           }}
         >
-          <input
-            className="w-full rounded-xl border border-white/15 bg-black/30 px-3 py-3 text-[16px]"
-            placeholder="Email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-          <input
-            className="w-full rounded-xl border border-white/15 bg-black/30 px-3 py-3 text-[16px]"
-            placeholder="Password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-          <button type="submit" className="w-full rounded-full bg-white/15 py-3 text-[13px] font-semibold">
-            {mode === 'in' ? 'Sign in with email' : 'Create pilot'}
-          </button>
-          <button type="button" className="w-full text-[12px] text-white/50" onClick={() => setMode(mode === 'in' ? 'up' : 'in')}>
-            {mode === 'in' ? 'Need an account?' : 'Have an account?'}
+          <div>
+            <label className="block text-[11px] font-semibold uppercase tracking-wider text-white/50 mb-1">
+              Pilot Email
+            </label>
+            <input
+              className="w-full rounded-xl border border-white/15 bg-black/40 px-3.5 py-2.5 text-[15px] text-white placeholder-white/30 focus:border-gold focus:outline-none"
+              placeholder="ana.rankin96@gmail.com"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-semibold uppercase tracking-wider text-white/50 mb-1">
+              Password
+            </label>
+            <input
+              className="w-full rounded-xl border border-white/15 bg-black/40 px-3.5 py-2.5 text-[15px] text-white placeholder-white/30 focus:border-gold focus:outline-none"
+              placeholder="Enter your pilot password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </div>
+
+          <div className="flex items-center justify-between pt-1">
+            <label className="flex items-center gap-2 text-[12px] text-white/70 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={remember}
+                onChange={(e) => {
+                  setRemember(e.target.checked)
+                  setRememberMe(e.target.checked)
+                }}
+              />
+              Remember me
+            </label>
+            <button
+              type="button"
+              className="text-[12px] text-white/50 hover:text-white"
+              onClick={() => setMode(mode === 'in' ? 'up' : 'in')}
+            >
+              {mode === 'in' ? 'Need an account?' : 'Have an account?'}
+            </button>
+          </div>
+
+          <button
+            type="submit"
+            className="w-full rounded-2xl bg-gradient-to-r from-magenta via-purple-600 to-magenta py-3 text-[14px] font-bold text-white shadow-[0_0_20px_#ff2bd644] active:scale-98 transition-transform"
+          >
+            {mode === 'in' ? 'Dock Into Orbit' : 'Create Pilot Account'}
           </button>
         </form>
-      </details>
-      {error ? <p className="text-[12px] text-red-300">{error}</p> : null}
-      <details className="rounded-xl border border-gold/20 bg-black/20 p-3">
-        <summary className="cursor-pointer text-[12px] text-gold">Admin dock</summary>
+
+        {error && (
+          <div className="mt-3 rounded-xl border border-red-500/30 bg-red-950/40 p-2.5 text-center text-[12px] text-red-200">
+            ⚠️ {error}
+          </div>
+        )}
+
+        {success && (
+          <div className="mt-3 rounded-xl border border-emerald-500/30 bg-emerald-950/40 p-2.5 text-center text-[12px] text-emerald-200">
+            ✅ {success}
+          </div>
+        )}
+      </div>
+
+      {/* 1-Code Quick Passcode Dock */}
+      <details className="rounded-2xl border border-gold/20 bg-black/30 p-3">
+        <summary className="cursor-pointer text-[12px] font-semibold text-gold">
+          ⚡ 1-Step Passcode Dock
+        </summary>
         <form
           className="mt-3 space-y-2"
           onSubmit={(e) => {
             e.preventDefault()
             const fd = new FormData(e.currentTarget)
             const code = String(fd.get('code') ?? '')
-            void import('~/lib/progress').then(({ loginAdminDock }) => {
-              const res = loginAdminDock(code)
-              if (res.error) setError(res.error)
-              else finish()
-            })
+            const res = loginWithPasscode(code)
+            if (res.error) setError(res.error)
+            else finish()
           }}
         >
-          <p className="text-[12px] text-white/55">Local admin code. Cloud admins use a signed-in profile flag.</p>
-          <input name="code" type="password" className="w-full rounded-xl border border-white/15 bg-black/30 px-3 py-2 text-[14px]" placeholder="Dock code" />
-          <button type="submit" className="w-full rounded-full bg-gold py-2 text-[13px] font-semibold text-void">
-            Open admin
+          <p className="text-[11px] text-white/50">
+            Enter your secret admin/co-admin passcode directly to dock without entering an email.
+          </p>
+          <input
+            name="code"
+            type="password"
+            className="w-full rounded-xl border border-white/15 bg-black/40 px-3 py-2 text-[14px] text-white placeholder-white/30"
+            placeholder="Passcode"
+            required
+          />
+          <button
+            type="submit"
+            className="w-full rounded-xl bg-gold py-2 text-[13px] font-bold text-void active:scale-98 transition-transform"
+          >
+            Authenticate Passcode
           </button>
         </form>
+      </details>
+
+      {/* Social Logins (Google / Apple / Microsoft) */}
+      <details className="rounded-2xl border border-white/10 bg-black/20 p-3">
+        <summary className="cursor-pointer text-[12px] text-white/50">
+          OAuth Social Logins (Google, Apple, Microsoft)
+        </summary>
+        <div className="mt-3 space-y-2">
+          {OAUTH.map((p) => (
+            <button
+              key={p}
+              type="button"
+              className="w-full rounded-xl border border-white/15 bg-white/5 py-2 text-[12px] text-white/80 hover:bg-white/10"
+              onClick={() => oauth(p)}
+            >
+              Sign in with {providerLabel(p)}
+            </button>
+          ))}
+        </div>
       </details>
     </div>
   )

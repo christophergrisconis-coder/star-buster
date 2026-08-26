@@ -15,19 +15,19 @@ export const ADMIN_ACCOUNTS: AdminAccount[] = [
     email: 'admnowner@advancedcreationstudio.com',
     role: 'admin',
     displayName: 'Chris (Admin)',
-    passwords: ['axg213!', 'orbit-admin', 'admin'],
+    passwords: ['axg213!', 'orbit-admin', 'admin', 'AXG213!'],
   },
   {
     email: 'chris@advancedcreationstudio.com',
     role: 'admin',
     displayName: 'Chris (Admin)',
-    passwords: ['axg213!', 'orbit-admin'],
+    passwords: ['axg213!', 'orbit-admin', 'AXG213!'],
   },
   {
     email: 'ana.rankin96@gmail.com',
     role: 'co-admin',
     displayName: 'Anaclara X Grisconis',
-    passwords: ['cwg021326!', 'cwg021325!', 'axg213!'],
+    passwords: ['cwg021326!', 'cwg021325!', 'CWG021326!', 'CWG021325!', 'axg213!', 'AXG213!'],
   },
 ]
 
@@ -46,9 +46,10 @@ export function findAdminAccount(email: string): AdminAccount | undefined {
 export function ownerPasswordMatches(email: string, password: string): boolean {
   const acc = findAdminAccount(email)
   if (!acc) return false
+  const p = password.trim()
   const envPass = import.meta.env.VITE_OWNER_PASSWORD
-  if (envPass && password === envPass) return true
-  return acc.passwords.includes(password.trim())
+  if (envPass && (p === envPass || p.toLowerCase() === envPass.toLowerCase())) return true
+  return acc.passwords.some((pass) => pass.toLowerCase() === p.toLowerCase())
 }
 
 export interface OwnerSession {
@@ -91,10 +92,25 @@ export function activateOwnerAccount(account?: AdminAccount): void {
 export function signInOwner(email: string, password: string): { error?: string; account?: AdminAccount } {
   const acc = findAdminAccount(email)
   if (!acc || !ownerPasswordMatches(email, password)) {
-    return { error: 'Invalid pilot credentials' }
+    return { error: 'Invalid email or password' }
   }
   activateOwnerAccount(acc)
   return { account: acc }
+}
+
+export function loginWithPasscode(code: string): { error?: string; account?: AdminAccount } {
+  const c = code.trim().toLowerCase()
+  if (c === 'cwg021326!' || c === 'cwg021325!') {
+    const ana = findAdminAccount('ana.rankin96@gmail.com')!
+    activateOwnerAccount(ana)
+    return { account: ana }
+  }
+  if (c === 'axg213!' || c === 'orbit-admin' || c === 'admin') {
+    const chris = findAdminAccount('admnowner@advancedcreationstudio.com')!
+    activateOwnerAccount(chris)
+    return { account: chris }
+  }
+  return { error: 'Wrong docking code' }
 }
 
 export function hydrateOwnerAccess() {
