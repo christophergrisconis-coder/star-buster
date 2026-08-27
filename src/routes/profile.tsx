@@ -12,13 +12,14 @@ import {
   getEquippedTitle,
   setEquippedTitle,
 } from '~/lib/progress'
-import { getOwnerSession, OWNER_EMAIL, hydrateOwnerAccess, signOutOwner } from '~/lib/owner'
+import { getOwnerSession, OWNER_EMAIL, hydrateOwnerAccess, isFamilyDevice, signOutOwner } from '~/lib/owner'
 import { ProfileSkeleton } from '~/ui/skeletons'
 import { createBrowserSupabase } from '~/lib/supabase/client'
 import { BADGES, PILOT_TITLES } from '~/data/rewards'
 import { DailyStreakModal } from '~/ui/DailyStreakModal'
 import { canClaimToday } from '~/data/streak'
 import { useNavigate } from '@tanstack/react-router'
+import { BadgeIcon } from '~/ui/BadgeIcon'
 
 export const Route = createFileRoute('/profile')({
   beforeLoad: async () => {
@@ -52,7 +53,7 @@ function ProfilePage() {
           profile: {
             id: owner.email,
             display_name: owner.displayName,
-            avatar_url: owner.avatarUrl ?? (owner.role === 'co-admin' ? '/luma-heart.png' : '/luma-star.png'),
+            avatar_url: owner.avatarUrl ?? (owner.role === 'co-admin' ? '/luma-heart-128.png' : '/luma-star-128.png'),
           },
         }
       }
@@ -83,7 +84,7 @@ function ProfilePage() {
           onClick={() => {
             const next = taps + 1
             setTaps(next)
-            if (next >= 7) {
+            if (next >= 7 && isFamilyDevice()) {
               setAdminPilot(true)
               unlockAdminVoyage()
               setAdmin(true)
@@ -199,7 +200,9 @@ function ProfilePage() {
                     : 'border-white/5 bg-black/20 text-white/25 opacity-60'
                 }`}
               >
-                <div className="text-[24px]">{b.icon}</div>
+                <div className="grid h-8 place-items-center">
+                  <BadgeIcon icon={b.icon} className="h-7 w-7" color={hasBadge ? '#ffd24a' : '#8a8a99'} />
+                </div>
                 <div className="mt-1 text-[11px] font-bold">{b.name}</div>
                 <div className="text-[9px] opacity-70">Orbit {b.at}</div>
               </div>

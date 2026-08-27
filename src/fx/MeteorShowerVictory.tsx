@@ -27,7 +27,7 @@ export function MeteorShowerVictory({
 
   useEffect(() => {
     // Initial sound effect
-    synth.win()
+    synth.bigWin()
     const flashTimer = setTimeout(() => setFlash(false), 800)
     const shakeTimer = setTimeout(() => setShake(false), 2600)
 

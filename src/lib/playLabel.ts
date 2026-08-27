@@ -1,4 +1,4 @@
-import { CAMPAIGN, LEVEL_BY_ID } from '~/data/campaign'
+import { CAMPAIGN, FINAL_LEVEL_ID, LEVEL_BY_ID } from '~/data/campaign'
 import { getProgress, playTarget } from './progress'
 
 export function playDestination() {
@@ -16,6 +16,6 @@ export function playDestination() {
     sector: sector?.name ?? 'Nebula Novice',
     guest: progress.guest,
     cleared,
-    total: 250,
+    total: FINAL_LEVEL_ID,
   }
 }

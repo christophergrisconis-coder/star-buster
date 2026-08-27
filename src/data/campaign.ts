@@ -322,6 +322,8 @@ export function generateCampaign(): CampaignNode {
 
 export const CAMPAIGN = generateCampaign()
 export const LEVELS = CAMPAIGN.levels
+/** Highest campaign level id — the single source of truth for the campaign length. */
+export const FINAL_LEVEL_ID = LEVELS.length
 export const LEVEL_BY_ID: Record<number, LevelConfig> = Object.fromEntries(
   LEVELS.map((l) => [l.id, l]),
 )

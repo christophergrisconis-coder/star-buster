@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { STREAK_REWARDS, getStreakState, canClaimToday, claimDailyStreak, type StreakDayReward } from '~/data/streak'
 import { synth } from '~/audio/synth'
+import { BadgeIcon } from './BadgeIcon'
 
 export function DailyStreakModal({
   isOpen,
@@ -96,8 +97,8 @@ export function DailyStreakModal({
                     }`}
                   >
                     <div className="text-[10px] font-bold tracking-wider text-white/60">{r.label}</div>
-                    <div className={`my-0.5 ${isCrate ? 'text-[26px]' : 'text-[20px]'}`}>
-                      {isCompleted ? '✅' : r.icon}
+                    <div className={`my-0.5 grid place-items-center ${isCrate ? 'text-[26px]' : 'text-[20px]'}`}>
+                      <BadgeIcon icon={isCompleted ? '✅' : r.icon} className={isCrate ? 'h-7 w-7' : 'h-5.5 w-5.5'} color={isCompleted ? '#6ee7b7' : '#ffd24a'} />
                     </div>
                     <div className="text-[9px] font-semibold text-gold leading-tight">{r.rewardText}</div>
                   </div>
@@ -132,8 +133,8 @@ export function DailyStreakModal({
                     }`}
                   >
                     <div className="text-[10px] font-bold tracking-wider text-white/60">{r.label}</div>
-                    <div className={`my-0.5 ${isGrandVault ? 'text-[28px]' : 'text-[20px]'}`}>
-                      {isCompleted ? '✅' : r.icon}
+                    <div className={`my-0.5 grid place-items-center ${isGrandVault ? 'text-[28px]' : 'text-[20px]'}`}>
+                      <BadgeIcon icon={isCompleted ? '✅' : r.icon} className={isGrandVault ? 'h-7.5 w-7.5' : 'h-5.5 w-5.5'} color={isCompleted ? '#6ee7b7' : '#ffd24a'} />
                     </div>
                     <div className="text-[9px] font-semibold text-gold leading-tight">{r.rewardText}</div>
                   </div>

@@ -1,6 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import { createServerSupabase } from '~/lib/supabase/server'
+import { LEVEL_BY_ID } from '~/data/campaign'
 import { userIdFromRequest } from './session'
 
 async function authedClient() {
@@ -22,26 +23,28 @@ export const saveProgress = createServerFn({ method: 'POST' })
   )
   .handler(async ({ data }) => {
     const { supabase, userId } = await authedClient()
-    const { error } = await supabase.from('level_progress').upsert({
-      user_id: userId,
-      level_id: data.levelId,
-      best_score: data.bestScore,
-      stars: data.stars,
-      completed_at: new Date().toISOString(),
-    })
+    const { error } = await supabase.from('level_progress').upsert(
+      {
+        user_id: userId,
+        level_id: data.levelId,
+        best_score: data.bestScore,
+        stars: data.stars,
+        completed_at: new Date().toISOString(),
+      },
+      { onConflict: 'user_id,level_id' },
+    )
     if (error) throw new Error(error.message)
-    return { ok: true }
-  })
 
-export const saveBoard = createServerFn({ method: 'POST' })
-  .validator(z.object({ levelId: z.number(), board: z.unknown() }))
-  .handler(async ({ data }) => {
-    const { supabase, userId } = await authedClient()
-    const { error } = await supabase.from('game_saves').upsert({
-      user_id: userId,
-      board: { levelId: data.levelId, state: data.board },
-    })
-    if (error) throw new Error(error.message)
+    // Keep crew cards fresh — best-effort, never blocks the save.
+    const nebula = LEVEL_BY_ID[data.levelId]
+    await supabase
+      .from('profiles')
+      .update({
+        last_active_at: new Date().toISOString(),
+        ...(nebula ? { last_nebula_name: nebula.name } : {}),
+      })
+      .eq('id', userId)
+
     return { ok: true }
   })
 

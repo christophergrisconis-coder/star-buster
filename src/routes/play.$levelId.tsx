@@ -14,10 +14,11 @@ import { dailyLevel, shareOrbitHref, utcDayKey } from '~/data/daily'
 import { weeklyLevel, currentWeekly, weekKey, WEEKLY_LEVEL_ID } from '~/data/weekly'
 import { CONTINUE_MOVES, HINT_COIN_COST } from '~/data/gifts'
 import { getLevel } from '~/data/levels'
-import { CAMPAIGN, LEVEL_BY_ID } from '~/data/campaign'
+import { CAMPAIGN, FINAL_LEVEL_ID, LEVEL_BY_ID } from '~/data/campaign'
 import { createGame, howToClear, reduce } from '~/engine'
 import { isSwappable, type GameState } from '~/engine/types'
 import { ChallengeToast } from '~/fx/comboBanners'
+import { MeteorShowerVictory } from '~/fx/MeteorShowerVictory'
 import { RoundFinaleFX } from '~/fx/roundFinaleFX'
 import { useHintCoach } from '~/hint/useHint'
 import { Board } from '~/ui/Board'
@@ -50,6 +51,7 @@ import {
 import { kitItemIds, kitLabelForItem, slotById } from '~/data/kit'
 import { applyTutorialBoard, LESSONS, TUTORIAL_LEVEL, TUTORIAL_SUN } from '~/data/tutorial'
 import { hasCompletedTutorial, markTutorialComplete } from '~/lib/tutorial'
+import { clearRun, loadRun, saveRun } from '~/lib/resume'
 
 export const Route = createFileRoute('/play/$levelId')({
   validateSearch: (raw: Record<string, unknown>) => ({
@@ -109,8 +111,14 @@ function PlayPage() {
   }, [id, nebulaChallenge, isLesson, isDaily, search.seed])
   const challenges = useMemo(() => (level ? challengesForLevel(level) : []), [level])
   const navigate = useNavigate()
+  const canResume =
+    !isLesson && !isDaily && !isWeekly && !search.challenge && Number.isFinite(id) && id >= 1
   const [state, setState] = useState<GameState | null>(() => {
     if (!level) return null
+    if (canResume) {
+      const resumed = loadRun(id)
+      if (resumed) return resumed
+    }
     const game = createGame(level)
     return isLesson ? applyTutorialBoard(game) : game
   })
@@ -134,6 +142,19 @@ function PlayPage() {
   const [pickup, setPickup] = useState<ActivePickup | null>(null)
   const [kitNote, setKitNote] = useState<string | null>(null)
   const [orbitJump, setOrbitJump] = useState(false)
+  const [finaleDone, setFinaleDone] = useState(false)
+  const [boardShake, setBoardShake] = useState(false)
+  const shakeTimer = useRef<number | null>(null)
+  const lowMovesWarned = useRef(false)
+
+  useEffect(() => {
+    if (!state || state.status !== 'playing') return
+    if (state.movesLeft <= 5 && state.movesLeft > 0 && !lowMovesWarned.current) {
+      lowMovesWarned.current = true
+      synth.heartbeat()
+    }
+    if (state.movesLeft > 5) lowMovesWarned.current = false
+  }, [state?.movesLeft, state?.status, state])
   const nebulaBoostUsed = useRef(false)
   const shieldArmed = useRef(false)
   const awardedRef = useRef(false)
@@ -194,11 +215,11 @@ function PlayPage() {
       void navigate({ to: '/leaderboard' })
       return
     }
-    if (id >= 250) {
+    if (id >= FINAL_LEVEL_ID) {
       void navigate({ to: '/' })
       return
     }
-    const dest = Math.min(250, id + 1)
+    const dest = Math.min(FINAL_LEVEL_ID, id + 1)
     const here = LEVEL_BY_ID[id]
     const next = LEVEL_BY_ID[dest]
     if (here && next && next.nebulaId !== here.nebulaId) {
@@ -227,7 +248,7 @@ function PlayPage() {
     const pendingClip = state.events.some((e) => e.type === 'wave' || e.type === 'swap')
     if (pendingClip && !winClipSeen.current) return
     setOrbitJump(true)
-    if (!isLesson && id >= 250) return
+    if (!isLesson && id >= FINAL_LEVEL_ID) return
     const t = window.setTimeout(() => jumpNextOrbitRef.current(), 2800)
     return () => window.clearTimeout(t)
   }, [state?.status, state?.levelId, state?.events, boardBusy, isLesson, id])
@@ -239,8 +260,18 @@ function PlayPage() {
     }
     if (playId.current === levelId && !nebulaChallenge) return
     playId.current = levelId
-    resetRun(createGame(level))
+    resetRun((canResume ? loadRun(id) : null) ?? createGame(level))
   }, [levelId, level, nebulaChallenge?.id])
+
+  // Keep a resumable snapshot of mid-run campaign boards; clear it on any ending.
+  useEffect(() => {
+    if (!state || !canResume) return
+    if (state.status === 'playing' && level && state.movesLeft < level.moves) {
+      saveRun(id, state)
+    } else if (state.status === 'won' || state.status === 'lost') {
+      clearRun()
+    }
+  }, [state, canResume, id, level])
 
   useEffect(() => {
     if (!state || state.status !== 'finale' || boardBusy) return
@@ -491,7 +522,7 @@ function PlayPage() {
     }
   }
 
-  const nextId = Math.min(250, id + 1)
+  const nextId = Math.min(FINAL_LEVEL_ID, id + 1)
   const nextOpen = canPlay(nextId)
   const nextLevel = LEVEL_BY_ID[nextId]
   const nebulaAdvance = Boolean(level && nextLevel && nextLevel.nebulaId !== level.nebulaId)
@@ -569,7 +600,7 @@ function PlayPage() {
       ) : null}
       {denyNote ? <p className="text-center text-[12px] text-magenta">{denyNote}</p> : null}
       {kitNote ? <p className="text-center text-[12px] text-gold">{kitNote}</p> : null}
-      <div className="relative">
+      <div className={`relative ${boardShake ? 'board-shake' : ''}`}>
         <Board
           state={state}
           hint={hint.hint}
@@ -615,6 +646,18 @@ function PlayPage() {
             const hasColorBomb = wave.spawnedSpecials.some((s) => s.special === 'color-bomb')
             if (hasColorBomb) synth.colorBombBlast()
             else if (hasStriped) synth.stripedClear()
+            if (wave.spawnedSpecials.length) synth.spark()
+            if (wave.refill.length >= 9) synth.land()
+            if (wave.blast === 'L') {
+              try {
+                navigator.vibrate?.(60)
+              } catch {
+                /* no haptics */
+              }
+              setBoardShake(true)
+              if (shakeTimer.current) window.clearTimeout(shakeTimer.current)
+              shakeTimer.current = window.setTimeout(() => setBoardShake(false), 360)
+            }
           }}
           pickup={pickup}
           onCollectPickup={() => {
@@ -688,18 +731,29 @@ function PlayPage() {
             >
               Enter Amber Veil 1-1 →
             </Link>
-          ) : nextOpen && id < 250 ? (
+          ) : nextOpen && id < FINAL_LEVEL_ID ? (
             <button type="button" className="mt-2 text-magenta" onClick={jumpNextOrbit}>
               Next orbit →
             </button>
-          ) : id >= 250 ? (
-            <p className="mt-2 text-[13px] text-gold">Voyage complete.</p>
+          ) : id >= FINAL_LEVEL_ID ? (
+            <div className="mt-2 space-y-1">
+              <p className="display text-[22px] text-gold">GALAXY BUSTER</p>
+              <p className="text-[12px] text-white/70">
+                Every orbit in the known universe is clear. Thank you for flying, Commander.
+              </p>
+              <Link to="/" className="mt-1 inline-block text-magenta">
+                Return to the star map →
+              </Link>
+            </div>
           ) : (
             <Link to="/auth" className="mt-2 inline-block text-magenta">
               Sign in to continue →
             </Link>
           )}
         </div>
+      ) : null}
+      {id === FINAL_LEVEL_ID && state.status === 'won' && !boardBusy && !finaleDone ? (
+        <MeteorShowerVictory onFinished={() => setFinaleDone(true)} />
       ) : null}
       {orbitJump ? (
         <NextOrbit
@@ -709,7 +763,7 @@ function PlayPage() {
           nextName={
             isDaily
               ? 'Daily rank'
-              : id >= 250 && !isLesson
+              : id >= FINAL_LEVEL_ID && !isLesson
               ? 'Voyage complete'
               : nebulaAdvance
                 ? `Next world · ${nextLabel}`
@@ -730,6 +784,7 @@ function PlayPage() {
             setLivesLeft(getInventory().lives)
           }}
           onRetry={() => {
+            clearRun()
             resetRun(createGame(level))
             setLivesLeft(getInventory().lives)
           }}

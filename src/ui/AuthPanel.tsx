@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, useRouterState } from '@tanstack/react-router'
+import { useNavigate } from '@tanstack/react-router'
 import { createBrowserSupabase, supabaseConfigured } from '~/lib/supabase/client'
 import {
   getLastProvider,
@@ -10,7 +10,7 @@ import {
   type AuthProviderId,
 } from '~/lib/authPrefs'
 import { mergeGuestIntoUser } from '~/lib/progress'
-import { dockOwnerAccount, findAdminAccount, getOwnerSession, signInOwner, loginWithPasscode } from '~/lib/owner'
+import { dockOwnerAccount, findAdminAccount, getOwnerSession, isFamilyDevice, signInOwner, loginWithPasscode } from '~/lib/owner'
 import { hasCompletedTutorial } from '~/lib/tutorial'
 
 type OAuthId = Exclude<AuthProviderId, 'email'>
@@ -18,9 +18,8 @@ const OAUTH: OAuthId[] = ['google', 'apple', 'azure']
 
 export function AuthPanel({ heading = 'Docking Bay' }: { heading?: string }) {
   const nav = useNavigate()
-  const familyDock = useRouterState({
-    select: (s) => new URLSearchParams(s.location.searchStr).get('family') === 'dock',
-  })
+  // One-tap docking only appears on devices that already passcode-authenticated once.
+  const familyDock = isFamilyDevice()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -104,7 +103,7 @@ export function AuthPanel({ heading = 'Docking Bay' }: { heading?: string }) {
                 : 'border-pink-500/30 bg-pink-950/30 text-pink-300 hover:bg-pink-900/40'
             }`}
           >
-            <img src="/luma-heart.png" alt="" className="h-5 w-5 object-contain" />
+            <img src="/luma-heart-128.png" alt="" className="h-5 w-5 object-contain" />
             <span>Anaclara 💖</span>
           </button>
           <button
@@ -116,7 +115,7 @@ export function AuthPanel({ heading = 'Docking Bay' }: { heading?: string }) {
                 : 'border-gold/30 bg-black/40 text-gold hover:bg-gold/10'
             }`}
           >
-            <img src="/luma-star.png" alt="" className="h-5 w-5 object-contain" />
+            <img src="/luma-star-128.png" alt="" className="h-5 w-5 object-contain" />
             <span>Chris ⚡</span>
           </button>
         </div>

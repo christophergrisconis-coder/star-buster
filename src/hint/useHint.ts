@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { GameState } from '~/engine/types'
 import type { HintMove } from './heuristic'
 
@@ -8,6 +8,13 @@ export function useHintCoach() {
   const [hint, setHint] = useState<HintMove | null>(null)
   const [coachLine, setCoachLine] = useState<string | null>(null)
   const [coachError, setCoachError] = useState<string | null>(null)
+
+  useEffect(() => {
+    return () => {
+      workerRef.current?.terminate()
+      workerRef.current = null
+    }
+  }, [])
 
   const ensureWorker = () => {
     if (workerRef.current) return workerRef.current

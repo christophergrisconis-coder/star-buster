@@ -2565,3 +2565,54 @@ html.light .chrome-nav {
     animation: none !important;
   }
 }
+
+/* Full-screen shake for the campaign finale + L-size blasts */
+@keyframes meteor-screen-shake {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  12% { transform: translate3d(-8px, 5px, 0); }
+  25% { transform: translate3d(7px, -6px, 0); }
+  38% { transform: translate3d(-6px, -4px, 0); }
+  50% { transform: translate3d(5px, 6px, 0); }
+  63% { transform: translate3d(-4px, 3px, 0); }
+  75% { transform: translate3d(3px, -3px, 0); }
+  88% { transform: translate3d(-2px, 2px, 0); }
+}
+.meteor-screen-shake {
+  animation: meteor-screen-shake 480ms ease-out 3;
+}
+@keyframes board-shake {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  20% { transform: translate3d(-5px, 3px, 0); }
+  40% { transform: translate3d(4px, -4px, 0); }
+  60% { transform: translate3d(-3px, -2px, 0); }
+  80% { transform: translate3d(2px, 3px, 0); }
+}
+.board-shake {
+  animation: board-shake 340ms ease-out 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .meteor-screen-shake,
+  .board-shake {
+    animation: none !important;
+  }
+}
+
+/* Per-sector galaxy photo layer on the voyage map — screen blend hides black */
+.pov-galaxy {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  mix-blend-mode: screen;
+  opacity: 0.38;
+  transition: background-image 800ms ease, opacity 800ms ease;
+  animation: pov-galaxy-drift 90s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+@keyframes pov-galaxy-drift {
+  from { transform: scale(1.04) translate3d(-1.5%, 0, 0); }
+  to { transform: scale(1.1) translate3d(1.5%, -1.5%, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pov-galaxy { animation: none; }
+}

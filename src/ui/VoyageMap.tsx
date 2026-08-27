@@ -16,6 +16,7 @@ type PathNode = {
   index: number
   nebulaId: string
   name: string
+  sectorId: number
   sectorName: string
   sectorColor: string
   systemName: string
@@ -32,6 +33,7 @@ function buildNodes(includeSchool: boolean): PathNode[] {
       index: 0,
       nebulaId: 'tutorial',
       name: 'Flight School',
+      sectorId: 1,
       sectorName: 'Training orbit',
       sectorColor: '#c9a227',
       systemName: 'How to play',
@@ -49,6 +51,7 @@ function buildNodes(includeSchool: boolean): PathNode[] {
       index: nodes.length,
       nebulaId: nebula.id,
       name: nebula.name,
+      sectorId: nebula.sectorId,
       sectorName: sector?.name ?? 'Sector',
       sectorColor: sector?.color ?? '#6b7c8a',
       systemName: system?.name ?? '',
@@ -172,6 +175,11 @@ export function VoyageMap() {
   return (
     <div className="voyage-shell">
       <VoyageSky travelRef={travelRef} />
+      <div
+        className="pov-galaxy"
+        aria-hidden
+        style={{ backgroundImage: `url(/voyage/galaxy-${(((current?.sectorId ?? 1) - 1) % 3) + 1}.jpg)` }}
+      />
       <div className="pov-nebula" aria-hidden>
         <span className="voyage-drift voyage-drift-a" style={{ background: hereTheme.mist, opacity: 0.16 }} />
         <span className="voyage-drift voyage-drift-b" style={{ background: hereTheme.bloom, opacity: 0.1 + mix * 0.12 }} />

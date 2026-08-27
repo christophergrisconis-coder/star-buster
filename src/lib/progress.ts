@@ -114,10 +114,11 @@ export function isAdminPilot(): boolean {
 }
 
 export function loginAdminDock(password: string): { error?: string } {
-  const dock = import.meta.env.VITE_ADMIN_PASSWORD ?? 'orbit-admin'
+  const dock = import.meta.env.VITE_ADMIN_PASSWORD
   const owner = import.meta.env.VITE_OWNER_PASSWORD
+  if (!dock && !owner) return { error: 'Admin dock is not configured on this build' }
   const code = password.trim()
-  if (code !== dock && !(owner && code === owner)) return { error: 'Wrong dock code' }
+  if (!(dock && code === dock) && !(owner && code === owner)) return { error: 'Wrong dock code' }
   setAdminPilot(true)
   unlockAdminVoyage()
   return {}
@@ -277,6 +278,12 @@ export function grantLives(n = 1): boolean {
 export function grantCoins(n: number) {
   const inv = getInventory()
   inv.coins += n
+  write(INV, inv)
+}
+
+export function grantStardust(n: number) {
+  const inv = getInventory()
+  inv.stardust += n
   write(INV, inv)
 }
 

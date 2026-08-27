@@ -1,4 +1,5 @@
 import { Link, useRouterState } from '@tanstack/react-router'
+import { synth } from '~/audio/synth'
 import { PlayCta } from './PlayCta'
 
 const TABS = [
@@ -21,6 +22,18 @@ const TABS = [
       <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.7">
         <path d="M7 4.5h8.5a2 2 0 012 2V20l-6.2-2.6L5.1 20V6.5a2 2 0 012-2z" strokeLinejoin="round" />
         <path d="M9 9h6M9 12.5h4" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
+    to: '/zen',
+    label: 'Zen',
+    match: (p: string) => p.startsWith('/zen'),
+    icon: (
+      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.7">
+        <circle cx="12" cy="12" r="3" />
+        <ellipse cx="12" cy="12" rx="9" ry="3.6" />
+        <path d="M5.6 16.8c1.4 1.6 3.8 2.7 6.4 2.7s5-1.1 6.4-2.7" strokeLinecap="round" />
       </svg>
     ),
   },
@@ -70,6 +83,7 @@ export function Tabs() {
             <Link
               key={tab.label}
               to={tab.to}
+              onClick={() => synth.tick()}
               className="tab-fx relative flex flex-1 flex-col items-center gap-0.5 rounded-2xl px-1 py-1.5 text-gold"
               data-active={active}
             >

@@ -14,7 +14,8 @@ export const BADGES = [
   { id: 'system-clear', name: 'Helios Walker', at: 20, icon: '☀️', blurb: 'Fully conquered the Helios sector' },
   { id: 'veteran', name: 'Gravity Veteran', at: 90, icon: '🚀', blurb: 'Reached sector 3 with veteran rank' },
   { id: 'horizon', name: 'Event Horizon', at: 200, icon: '🌌', blurb: 'Entered the deep cosmic rim' },
-  { id: 'buster', name: 'Star Buster', at: 250, icon: '👑', blurb: 'Completed all 250 campaign orbits' },
+  { id: 'rift-walker', name: 'Rift Walker', at: 250, icon: '🌀', blurb: 'Crossed into the Quantum Rift' },
+  { id: 'buster', name: 'Star Buster', at: 330, icon: '👑', blurb: 'Completed all 330 campaign orbits' },
 ] as const
 
 export const CHALLENGE_BADGES = [
