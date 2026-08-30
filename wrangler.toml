@@ -1,2 +1,3 @@
+name = "star-buster"
 pages_build_output_dir = ".output/public"
 # trigger build
