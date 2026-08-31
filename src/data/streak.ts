@@ -1,4 +1,4 @@
-import { grantCoins, grantItem, getProgress } from '~/lib/progress'
+import { accountStorageKey, grantCoins, grantItem, grantStardust, getInventory, saveInventory, getProgress } from '~/lib/progress'
 
 export interface StreakDayReward {
   day: number
@@ -13,56 +13,57 @@ export const STREAK_REWARDS: StreakDayReward[] = [
     day: 1,
     label: 'Day 1',
     icon: '🪙',
-    rewardText: '+50 Coins',
+    rewardText: '+75 Coins & Drift',
     grant: () => {
-      grantCoins(50)
+      grantCoins(75)
+      grantItem('moves-5', 1)
     },
   },
   {
     day: 2,
     label: 'Day 2',
     icon: '✨',
-    rewardText: '+15 Stardust',
+    rewardText: '+25 Stardust',
     grant: () => {
-      const inv = JSON.parse(localStorage.getItem('star-buster-inventory') || '{}')
-      inv.stardust = (inv.stardust || 0) + 15
-      localStorage.setItem('star-buster-inventory', JSON.stringify(inv))
+      grantStardust(25)
     },
   },
   {
     day: 3,
     label: 'Day 3',
     icon: '💥',
-    rewardText: '1x Solar Flare',
+    rewardText: '2x Solar Flares',
     grant: () => {
-      grantItem('solar-flare', 1)
+      grantItem('solar-flare', 2)
     },
   },
   {
     day: 4,
     label: 'Day 4',
     icon: '🪙',
-    rewardText: '+120 Coins',
+    rewardText: '+200 Coins',
     grant: () => {
-      grantCoins(120)
+      grantCoins(200)
     },
   },
   {
     day: 5,
     label: 'Day 5',
     icon: '🎨',
-    rewardText: '1x Color Splash',
+    rewardText: '2x Splash & Hammer',
     grant: () => {
-      grantItem('color-splash', 1)
+      grantItem('color-splash', 2)
+      grantItem('hammer', 1)
     },
   },
   {
     day: 6,
     label: 'Day 6',
     icon: '🔨',
-    rewardText: '1x Cosmic Hammer',
+    rewardText: '2x Hammers + 35 Dust',
     grant: () => {
-      grantItem('hammer', 1)
+      grantItem('hammer', 2)
+      grantStardust(35)
     },
   },
   {
@@ -71,13 +72,88 @@ export const STREAK_REWARDS: StreakDayReward[] = [
     icon: '🎁',
     rewardText: 'Cosmic Mystery Crate',
     grant: () => {
-      grantCoins(250)
+      grantCoins(350)
       grantItem('solar-flare', 2)
       grantItem('hammer', 2)
       grantItem('gravity-well', 1)
-      const inv = JSON.parse(localStorage.getItem('star-buster-inventory') || '{}')
-      inv.stardust = (inv.stardust || 0) + 50
-      localStorage.setItem('star-buster-inventory', JSON.stringify(inv))
+      grantStardust(80)
+    },
+  },
+  {
+    day: 8,
+    label: 'Day 8',
+    icon: '🚀',
+    rewardText: '3x Extra Drift (+5)',
+    grant: () => {
+      grantItem('moves-5', 3)
+      grantCoins(150)
+    },
+  },
+  {
+    day: 9,
+    label: 'Day 9',
+    icon: '⏳',
+    rewardText: '2x Deep Clocks (+35s)',
+    grant: () => {
+      grantItem('orbit-time-deep', 2)
+    },
+  },
+  {
+    day: 10,
+    label: 'Day 10',
+    icon: '🌀',
+    rewardText: '2x Gravity Wells',
+    grant: () => {
+      grantItem('gravity-well', 2)
+      grantCoins(250)
+    },
+  },
+  {
+    day: 11,
+    label: 'Day 11',
+    icon: '🎨',
+    rewardText: '3x Color Splash + 60 Dust',
+    grant: () => {
+      grantItem('color-splash', 3)
+      grantStardust(60)
+    },
+  },
+  {
+    day: 12,
+    label: 'Day 12',
+    icon: '🛡️',
+    rewardText: '3x Shields & 2x Remix',
+    grant: () => {
+      grantItem('ion-wake-shield', 3)
+      grantItem('star-shuffle', 2)
+    },
+  },
+  {
+    day: 13,
+    label: 'Day 13',
+    icon: '☄️',
+    rewardText: '5x Flares & 3x Hammers',
+    grant: () => {
+      grantItem('solar-flare', 5)
+      grantItem('hammer', 3)
+    },
+  },
+  {
+    day: 14,
+    label: 'Day 14',
+    icon: '👑',
+    rewardText: 'Supernova Grand Vault',
+    grant: () => {
+      grantCoins(600)
+      grantItem('solar-flare', 5)
+      grantItem('hammer', 4)
+      grantItem('gravity-well', 3)
+      grantItem('star-shuffle', 2)
+      grantItem('moves-5', 4)
+      grantStardust(150)
+      const inv = getInventory()
+      inv.lives = Math.max(inv.lives, 8)
+      saveInventory(inv)
     },
   },
 ]
@@ -104,7 +180,7 @@ function getYesterdayString(): string {
 export function getStreakState(): StreakState {
   if (typeof window === 'undefined') return { currentDay: 1, lastClaimDate: '', totalClaims: 0 }
   try {
-    const raw = localStorage.getItem(STREAK_KEY)
+    const raw = localStorage.getItem(accountStorageKey(STREAK_KEY))
     if (!raw) return { currentDay: 1, lastClaimDate: '', totalClaims: 0 }
     return JSON.parse(raw) as StreakState
   } catch {
@@ -130,7 +206,7 @@ export function claimDailyStreak(): { success: boolean; day: number; reward: Str
   let nextDay = state.currentDay
   if (state.lastClaimDate === yesterday) {
     // Continued streak!
-    nextDay = state.currentDay >= 7 ? 1 : state.currentDay + 1
+    nextDay = state.currentDay >= 14 ? 1 : state.currentDay + 1
   } else if (!state.lastClaimDate) {
     // First time
     nextDay = 1
@@ -148,6 +224,6 @@ export function claimDailyStreak(): { success: boolean; day: number; reward: Str
     totalClaims: (state.totalClaims || 0) + 1,
   }
 
-  localStorage.setItem(STREAK_KEY, JSON.stringify(newState))
+  localStorage.setItem(accountStorageKey(STREAK_KEY), JSON.stringify(newState))
   return { success: true, day: nextDay, reward }
 }

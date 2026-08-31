@@ -16,6 +16,11 @@ export function PlanetGlobe({
       className={`globe globe--${size} globe--${look.kind}${locked ? ' globe--locked' : ''}${lit ? ' globe--lit' : ''}`}
       style={{
         ['--globe-glow' as string]: look.glow,
+        ['--globe-atmosphere' as string]: look.atmosphere,
+        ['--globe-terrain' as string]: look.terrain,
+        ['--globe-band-angle' as string]: `${look.bandAngle}deg`,
+        ['--globe-crater-x' as string]: `${look.craterX}%`,
+        ['--globe-crater-y' as string]: `${look.craterY}%`,
         ['--globe-spin' as string]: `${look.spin}s`,
       }}
       aria-hidden
@@ -23,6 +28,8 @@ export function PlanetGlobe({
       <span className="globe-halo" />
       <div className="globe-stage">
         <img src={look.src} alt="" className="globe-photo" draggable={false} />
+        <span className="globe-terrain" />
+        <span className="globe-crater" />
         <span className="globe-limb" />
         <span className="globe-shine" />
       </div>

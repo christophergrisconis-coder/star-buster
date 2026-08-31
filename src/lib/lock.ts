@@ -2,9 +2,9 @@ import { CAMPAIGN, LEVEL_BY_ID, LEVELS } from '~/data/campaign'
 import { guestUnlocked } from '~/data/levels'
 import type { ProgressBlob } from './progress'
 
-/** Next sequential campaign level a signed-in pilot may enter (1–250). */
+/** Next sequential campaign level a signed-in pilot may enter (1 through the final orbit). */
 export function nextSequentialLevel(progress: ProgressBlob): number {
-  const maxLevels = LEVELS.length || 310
+  const maxLevels = LEVELS.length
   const completed = Object.values(progress.levels)
     .filter((l) => l.completed)
     .map((l) => l.levelId)
@@ -18,7 +18,7 @@ export function isAuthedPilot(progress: ProgressBlob): boolean {
 
 /** Guests may freely fly 1–3. Signed-in pilots follow the sequential level lock. */
 export function isLevelPlayable(levelId: number, progress: ProgressBlob): boolean {
-  const maxLevels = LEVELS.length || 310
+  const maxLevels = LEVELS.length
   if (!Number.isFinite(levelId) || levelId < 1 || levelId > maxLevels) return false
   if (progress.admin) return true
   if (!isAuthedPilot(progress)) return guestUnlocked(levelId)
@@ -90,7 +90,7 @@ export function activeNebulaId(progress: ProgressBlob): string {
 
 /** Skip stays inside an already-unlocked sector; never opens a locked sector. */
 export function canSkipLevel(levelId: number, progress: ProgressBlob): boolean {
-  if (progress.admin) return Number.isFinite(levelId) && levelId >= 1 && levelId <= 250
+  if (progress.admin) return Number.isFinite(levelId) && levelId >= 1 && levelId <= LEVELS.length
   if (!isLevelPlayable(levelId, progress)) return false
   const level = LEVEL_BY_ID[levelId]
   if (!level) return false

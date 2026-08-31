@@ -103,7 +103,31 @@ function collectSquares(
         byColor.set(color, list)
       }
       for (const [color, indices] of byColor) {
-        if (indices.length >= 3) runs.push({ indices, color, axis: 'h' })
+        if (indices.length === 4) runs.push({ indices, color, axis: 'h' })
+      }
+    }
+  }
+  return runs
+}
+
+// Star Buster treats a three-star corner as a complete Match 3, too. This is
+// the compact L pattern players naturally read on the board (three corners of
+// the same 2x2 box), not the larger five-piece L that creates a wrapped star.
+function collectBentThrees(cells: Cell[], width: number, height: number): Run[] {
+  const runs: Run[] = []
+  for (let y = 0; y < height - 1; y++) {
+    for (let x = 0; x < width - 1; x++) {
+      const idxs = [x + y * width, x + 1 + y * width, x + (y + 1) * width, x + 1 + (y + 1) * width]
+      const byColor = new Map<StarColor, number[]>()
+      for (const i of idxs) {
+        const cell = cells[i]!
+        if (!isMatchable(cell) || !cell.color) continue
+        const list = byColor.get(cell.color) ?? []
+        list.push(i)
+        byColor.set(cell.color, list)
+      }
+      for (const [color, indices] of byColor) {
+        if (indices.length === 3) runs.push({ indices, color, axis: 'h' })
       }
     }
   }
@@ -157,7 +181,11 @@ export function findMatches(
   height = BOARD_HEIGHT,
   preferredOrigin?: MatchOrigin,
 ): MatchGroup[] {
-  const runs = [...collectRuns(cells, width, height), ...collectSquares(cells, width, height)]
+  const runs = [
+    ...collectRuns(cells, width, height),
+    ...collectSquares(cells, width, height),
+    ...collectBentThrees(cells, width, height),
+  ]
   if (runs.length === 0) return []
 
   const groups: MatchGroup[] = []

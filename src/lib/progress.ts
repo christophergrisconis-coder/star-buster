@@ -10,6 +10,7 @@ import {
   nextPlayTarget,
   nextSequentialLevel,
 } from './lock'
+import { pilotSlot } from './pilotSlot'
 
 const KEY = 'star-buster-progress'
 const INV = 'star-buster-inventory'
@@ -85,7 +86,7 @@ const defaultInv = (): Inventory => ({
 function read<T>(key: string, fallback: T): T {
   if (typeof window === 'undefined') return fallback
   try {
-    const raw = localStorage.getItem(key)
+    const raw = localStorage.getItem(accountStorageKey(key))
     return raw ? (JSON.parse(raw) as T) : fallback
   } catch {
     return fallback
@@ -94,7 +95,22 @@ function read<T>(key: string, fallback: T): T {
 
 function write(key: string, value: unknown) {
   if (typeof window === 'undefined') return
-  localStorage.setItem(key, JSON.stringify(value))
+  localStorage.setItem(accountStorageKey(key), JSON.stringify(value))
+}
+
+/** Separate mutable saves per pilot on a shared device. */
+export function accountStorageKey(key: string): string {
+  if (typeof window === 'undefined') return key
+  const slot = pilotSlot()
+  if (!slot) return key
+  const scoped = `${key}${slot}`
+  // Preserve existing shared saves: Ana receives a private copy the first time
+  // she opens the updated app, then future changes stay in her own slot.
+  if (localStorage.getItem(scoped) == null) {
+    const legacy = localStorage.getItem(key)
+    if (legacy != null) localStorage.setItem(scoped, legacy)
+  }
+  return scoped
 }
 
 export function getProgress(): ProgressBlob {
@@ -103,6 +119,10 @@ export function getProgress(): ProgressBlob {
 
 export function getInventory(): Inventory {
   return read<Inventory>(INV, defaultInv())
+}
+
+export function saveInventory(inv: Inventory) {
+  write(INV, inv)
 }
 
 const ADMIN_KEY = 'star-buster-admin'
@@ -114,10 +134,11 @@ export function isAdminPilot(): boolean {
 }
 
 export function loginAdminDock(password: string): { error?: string } {
-  const dock = import.meta.env.VITE_ADMIN_PASSWORD ?? 'orbit-admin'
+  const dock = import.meta.env.VITE_ADMIN_PASSWORD
   const owner = import.meta.env.VITE_OWNER_PASSWORD
+  if (!dock && !owner) return { error: 'Admin dock is not configured on this build' }
   const code = password.trim()
-  if (code !== dock && !(owner && code === owner)) return { error: 'Wrong dock code' }
+  if (!(dock && code === dock) && !(owner && code === owner)) return { error: 'Wrong dock code' }
   setAdminPilot(true)
   unlockAdminVoyage()
   return {}
@@ -153,6 +174,22 @@ export function unlockAdminVoyage() {
   inv.sector = 5
   for (const [id, n] of Object.entries(ADMIN_KIT)) {
     inv.items[id] = Math.max(inv.items[id] ?? 0, n)
+  }
+  write(INV, inv)
+}
+
+/** Co-admin (Anaclara) seed — unlock voyage + starter kit without full admin pilot flag. */
+export function seedCoAdminCampaign() {
+  const p = getProgress()
+  p.guest = false
+  write(KEY, p)
+  const inv = getInventory()
+  inv.coins = Math.max(inv.coins, 25_000)
+  inv.stardust = Math.max(inv.stardust, 5_000)
+  inv.lives = getMaxLives()
+  inv.sector = Math.max(inv.sector, 3)
+  for (const [id, n] of Object.entries(ADMIN_KIT)) {
+    inv.items[id] = Math.max(inv.items[id] ?? 0, Math.ceil(n / 2))
   }
   write(INV, inv)
 }
@@ -233,6 +270,23 @@ export function nebulaAllStarred(nebulaId: string, progress = getProgress()): bo
   return ids.every((id) => (progress.levels[id]?.stars ?? 0) >= 3)
 }
 
+export function applyLifeRegen(): void {
+  const inv = getInventory()
+  if (inv.lives < getMaxLives()) {
+    // Regenerate lives towards max
+    const lastRegenKey = 'star-buster-last-regen'
+    const now = Date.now()
+    const last = Number(localStorage.getItem(accountStorageKey(lastRegenKey)) || now)
+    const passedMinutes = Math.floor((now - last) / (15 * 60 * 1000))
+    if (passedMinutes >= 1) {
+      const added = Math.min(getMaxLives() - inv.lives, passedMinutes)
+      inv.lives += added
+      write(INV, inv)
+      localStorage.setItem(accountStorageKey(lastRegenKey), String(now))
+    }
+  }
+}
+
 export function grantLives(n = 1): boolean {
   const inv = getInventory()
   if (inv.lives >= getMaxLives()) return false
@@ -244,6 +298,12 @@ export function grantLives(n = 1): boolean {
 export function grantCoins(n: number) {
   const inv = getInventory()
   inv.coins += n
+  write(INV, inv)
+}
+
+export function grantStardust(n: number) {
+  const inv = getInventory()
+  inv.stardust += n
   write(INV, inv)
 }
 

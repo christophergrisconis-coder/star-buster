@@ -36,7 +36,9 @@ export function HUD({
   cometDurationMs,
   challenges,
   completedChallenges = [],
+  challengeProgress = {},
   lessonFocus,
+  coAdmin = false,
 }: {
   state: GameState
   level: LevelConfig
@@ -49,7 +51,9 @@ export function HUD({
   cometDurationMs: number
   challenges: Challenge[]
   completedChallenges?: string[]
+  challengeProgress?: Record<string, { current: number; target: number; label: string; complete?: boolean }>
   lessonFocus?: 'goal' | 'comet' | 'challenges' | null
+  coAdmin?: boolean
 }) {
   const tail = state.cometTail
   const frac = tail <= 0 || cometDurationMs <= 0 ? 0 : Math.max(0, Math.min(1, cometRemainMs / cometDurationMs))
@@ -60,7 +64,7 @@ export function HUD({
   const goalPct = goal.total <= 0 ? 0 : Math.round((cleared / goal.total) * 100)
 
   return (
-    <div className="space-y-2 px-1">
+    <div className={`space-y-2 px-1 ${coAdmin ? 'coadmin-hud' : ''}`}>
       <div className="flex items-center justify-between gap-2">
         <div>
           <div className="display text-[24px] leading-none text-gold">{state.score}</div>
@@ -112,24 +116,34 @@ export function HUD({
 
       {challenges.length ? (
         <section className={`challenge-outline ${lessonFocus === 'challenges' ? 'lesson-focus' : ''}`}>
-          <p className="text-[10px] uppercase tracking-[0.22em] text-gold">Optional shop bonuses</p>
-          <p className="mt-1 text-[11px] text-white/50">Skip these and still advance. Seal them for extra coins and stardust.</p>
+          <p className="text-[10px] uppercase tracking-[0.22em] text-gold">{coAdmin ? 'Anaclara’s constellation quests' : 'Mission challenges'}</p>
+          <p className="mt-1 text-[11px] text-white/50">Live progress updates during the orbit. Seal quests for bonus stardust and rank progress.</p>
           <ul className="mt-2 space-y-1.5">
-            {challenges.map((c) => (
+            {challenges.map((c) => {
+              const progress = challengeProgress[c.id]
+              const isDone = done.has(c.id) || progress?.complete
+              const pct = progress ? Math.max(0, Math.min(100, (progress.current / Math.max(1, progress.target)) * 100)) : 0
+              return (
               <li
                 key={c.id}
-                className={`challenge-row ${done.has(c.id) ? 'challenge-row--done' : ''}`}
+                className={`challenge-row ${isDone ? 'challenge-row--done' : ''}`}
               >
                 <span className="challenge-tick" aria-hidden>
-                  {done.has(c.id) ? '★' : '○'}
+                  {isDone ? '★' : '○'}
                 </span>
-                <span>
+                <span className="min-w-0 flex-1">
                   <span className="block text-[12px] text-gold">{c.title}</span>
                   <span className="block text-[11px] text-white/60">{c.blurb}</span>
+                  {progress ? (
+                    <span className="challenge-live-progress">
+                      <span className="challenge-live-track" aria-hidden><i style={{ width: `${pct}%` }} /></span>
+                      <span>{isDone ? 'SEALED' : progress.label}</span>
+                    </span>
+                  ) : null}
                 </span>
                 <span className="text-[10px] text-cyan-200">+{c.stardust}</span>
               </li>
-            ))}
+            )})}
           </ul>
         </section>
       ) : null}

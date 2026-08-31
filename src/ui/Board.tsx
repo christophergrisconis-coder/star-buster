@@ -16,6 +16,7 @@ import { BurstLayer } from '~/fx/particles'
 import { INPUT_LOCK_SAFETY_MS, SLIDE_THRESHOLD_PX, shouldClearInputLock } from './inputLock'
 import { KitPickup, type ActivePickup } from './KitPickup'
 import { StarTile } from './StarTile'
+import { useIsCoAdmin } from '~/lib/owner'
 
 type WaveEvent = Extract<EngineEvent, { type: 'wave' }>
 
@@ -26,6 +27,8 @@ type Piece = {
   visualY?: number
   exploding?: boolean
   spawning?: boolean
+  waveFlow?: boolean
+  reaction?: 'dance' | 'spin' | 'cry' | 'launch' | 'supernova'
   blinkDelay: number
 }
 
@@ -88,6 +91,17 @@ function twoFrames() {
 
 const SWAP_MS = 280
 const DROP_MS = 320
+
+function reactionFor(piece: Piece, wave: WaveEvent): Piece['reaction'] {
+  if (wave.cause === 'hammer' || wave.cause === 'ignite') return 'launch'
+  if (wave.cause === 'well' || wave.cause === 'shuffle') return 'spin'
+  if (wave.cause === 'splash') return 'dance'
+  if (wave.activatedSpecials.some((s) => s.special === 'wrapped')) return 'supernova'
+  if (piece.cell.special === 'color-bomb' || wave.blast === 'L') return 'supernova'
+  if (piece.cell.special !== 'none') return 'spin'
+  if (wave.combo >= 4) return piece.index % 2 ? 'launch' : 'dance'
+  return (['dance', 'spin', 'cry', 'launch'] as const)[piece.index % 4]
+}
 
 function explodeMs(size: BlastSize, reduced: boolean) {
   if (reduced) return 0
@@ -237,6 +251,7 @@ export function Board({
   onCollectPickup?: () => void
 }) {
   const reduced = useReducedMotion()
+  const coAdmin = useIsCoAdmin()
   const boardRef = useRef<HTMLDivElement>(null)
   const settledRef = useRef(state.cells)
   const [pieces, setPieces] = useState<Piece[]>(() => piecesFromCells(state.cells))
@@ -259,6 +274,7 @@ export function Board({
   const [boardFx, setBoardFx] = useState('')
   const [lineClear, setLineClear] = useState<{ key: number; axis: 'h' | 'v'; pos: number } | null>(null)
   const [colorBombWave, setColorBombWave] = useState<number[]>([])
+  const [powerupCallout, setPowerupCallout] = useState<string | null>(null)
   const onWaveRef = useRef(onWave)
   onWaveRef.current = onWave
   const onBusyRef = useRef(onBusyChange)
@@ -291,6 +307,7 @@ export function Board({
     setBoardFx('')
     setLineClear(null)
     setColorBombWave([])
+    setPowerupCallout(null)
     setPieces((prev) => preservePieces(cells, prev))
   }
 
@@ -398,18 +415,32 @@ export function Board({
           : wave.combo >= 2 || wave.blast !== 'S' ? 'board-shake' : 'board-pulse'
         setBoardFx(shakeClass)
 
-        const hasStripedH = wave.spawnedSpecials.some((s) => s.special === 'striped-h')
-        const hasStripedV = wave.spawnedSpecials.some((s) => s.special === 'striped-v')
-        const hasColorBomb = wave.spawnedSpecials.some((s) => s.special === 'color-bomb')
+        const hasStripedH = wave.activatedSpecials.some((s) => s.special === 'striped-h')
+        const hasStripedV = wave.activatedSpecials.some((s) => s.special === 'striped-v')
+        const hasColorBomb = wave.activatedSpecials.some((s) => s.special === 'color-bomb')
         if (hasStripedH || hasStripedV) {
-          const origin = wave.spawnedSpecials.find((s) => s.special === 'striped-h' || s.special === 'striped-v')!
+          const origin = wave.activatedSpecials.find((s) => s.special === 'striped-h' || s.special === 'striped-v')!
           const pos = hasStripedH
             ? Math.floor(origin.index / snap.width)
             : origin.index % snap.width
           setLineClear({ key: pieceSeq++, axis: hasStripedH ? 'h' : 'v', pos })
+          setPowerupCallout(hasStripedH ? 'HORIZON BEAM' : 'POLAR BEAM')
         }
         if (hasColorBomb) {
           setColorBombWave(wave.destroyed.slice(0, 20))
+          setPowerupCallout('NOVA SINGULARITY')
+        } else if (wave.blast === 'L') {
+          setPowerupCallout('SUPERNOVA IMPACT')
+        } else if (wave.cause === 'hammer') {
+          setPowerupCallout('KINETIC HAMMER')
+        } else if (wave.cause === 'well') {
+          setPowerupCallout('GRAVITY WELL')
+        } else if (wave.cause === 'splash') {
+          setPowerupCallout('CHROMA SPLASH')
+        } else if (wave.cause === 'shuffle') {
+          setPowerupCallout('ORBIT SHUFFLE')
+        } else if (wave.cause === 'ignite') {
+          setPowerupCallout('SOLAR FLARE')
         }
 
         const spawnAt = new Set(wave.spawnedSpecials.map((s) => s.index))
@@ -419,6 +450,7 @@ export function Board({
           ...p,
           exploding: exploding.has(p.index) && !spawnAt.has(p.index),
           spawning: false,
+          reaction: exploding.has(p.index) && !spawnAt.has(p.index) ? reactionFor(p, wave) : undefined,
           cell: spawnAt.has(p.index)
             ? {
                 ...p.cell,
@@ -440,8 +472,8 @@ export function Board({
         const moveMap = new Map(wave.gravity.map((m) => [m.from, m.to]))
         moving = moving.map((p) =>
           moveMap.has(p.index)
-            ? { ...p, exploding: false, spawning: false, index: moveMap.get(p.index)! }
-            : { ...p, exploding: false, spawning: false },
+            ? { ...p, exploding: false, spawning: false, reaction: undefined, waveFlow: true, index: moveMap.get(p.index)! }
+            : { ...p, exploding: false, spawning: false, reaction: undefined, waveFlow: false },
         )
         cells = applyGravity(cells, snap.width, snap.height).cells
         setPieces(moving)
@@ -458,6 +490,8 @@ export function Board({
         await twoFrames()
         if (!live()) return
         await wait(gravityMs(wave.gravity, snap.width, reduced))
+        moving = moving.map((p) => ({ ...p, waveFlow: false }))
+        setPieces(moving)
         setTrails([])
         if (!live()) return
 
@@ -471,6 +505,7 @@ export function Board({
             cell: { ...starCell(r.color, cells[r.index]!.jelly), special: r.special },
             visualY: reduced ? y : -1 - (y % 3),
             spawning: true,
+            waveFlow: true,
             blinkDelay: (r.index % 8) * 40,
           }
         })
@@ -482,11 +517,14 @@ export function Board({
           await twoFrames()
           if (!live()) return
           const born = new Set(newcomers.map((n) => n.id))
-          moving = moving.map((p) => (born.has(p.id) ? { ...p, visualY: undefined, spawning: false } : p))
+          moving = moving.map((p) => (born.has(p.id) ? { ...p, visualY: undefined, spawning: false, waveFlow: true } : p))
           setPieces(moving)
           await wait(DROP_MS)
+          moving = moving.map((p) => ({ ...p, waveFlow: false }))
+          setPieces(moving)
         }
         setBoardFx('')
+        setPowerupCallout(null)
         if (!live()) return
       }
 
@@ -638,9 +676,15 @@ export function Board({
   const dropMs = reduced ? 0 : DROP_MS
 
   return (
-    <div className="relative mx-auto w-full max-w-[430px]">
+    <div className={`relative mx-auto w-full max-w-[430px] ${coAdmin ? 'coadmin-board-shell' : ''}`}>
       <ComboBanner word={banner} combo={waveCombo} cometTail={state.cometTail} />
-      <div className={`play-board relative aspect-square overflow-visible rounded-2xl border border-white/10 shadow-[0_0_40px_#ff2bd633] ${boardFx}`} aria-busy={busy}>
+      <div className={`play-board relative aspect-square overflow-visible ${coAdmin ? 'play-board--coadmin' : ''} ${boardFx}`} aria-busy={busy}>
+        {powerupCallout ? (
+          <div className="powerup-callout" role="status" aria-live="polite">
+            <span className="powerup-callout__eyebrow">{coAdmin ? 'HEARTLIGHT OVERRIDE' : 'SYSTEM OVERRIDE'}</span>
+            <strong>{powerupCallout}</strong>
+          </div>
+        ) : null}
         <div
           ref={boardRef}
           className="absolute inset-1 z-10 touch-none"
@@ -781,7 +825,7 @@ export function Board({
           return (
             <div
               key={p.id}
-              className={`piece-slot${sliding ? ' piece-moving' : ''}${bouncing ? ' swap-bounce' : ''}`}
+              className={`piece-slot${sliding ? ' piece-moving' : ''}${p.waveFlow ? ' piece-wave-flow' : ''}${bouncing ? ' swap-bounce' : ''}`}
               style={{
                 width: `${100 / state.width}%`,
                 height: `${100 / state.height}%`,
@@ -796,6 +840,7 @@ export function Board({
                       : `transform ${dropMs}ms cubic-bezier(0.2, 0.85, 0.2, 1), opacity 220ms ease`,
                 zIndex: p.exploding ? 6 : 2,
                 padding: 2,
+                ['--wave-phase' as string]: `${(x * 42 + Math.floor(p.index / state.width) * 66) % 360}ms`,
                 pointerEvents: 'none',
               }}
             >
@@ -804,6 +849,7 @@ export function Board({
                 selected={selected === p.index}
                 exploding={p.exploding}
                 spawning={p.spawning}
+                reaction={p.reaction}
                 delay={p.blinkDelay}
                 skin={skin}
               />

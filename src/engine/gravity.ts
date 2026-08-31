@@ -1,7 +1,7 @@
 import { cloneCell, isHole, occupies, type Cell, type GravityMove } from './types'
 
 function barrier(cell: Cell): boolean {
-  return cell.frosting > 0 || cell.chocolate
+  return cell.frosting > 0 || cell.chocolate || cell.swirl
 }
 
 export function applyGravity(

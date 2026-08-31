@@ -26,6 +26,7 @@ export function ChallengeBoard({ nebulaId }: { nebulaId?: string }) {
   const seed = selected ? getRerollSeed(selected.id) : 0
   void rerollTick
   const catalog = selected ? challengesForNebula(selected.id, seed) : []
+  const sealed = catalog.filter((challenge) => nebulaChallengeComplete(challenge.id)).length
 
   return (
     <div className="space-y-4 px-4 pt-4 pb-10">
@@ -71,6 +72,11 @@ export function ChallengeBoard({ nebulaId }: { nebulaId?: string }) {
             <h2 className="display text-[22px] text-gold">{selected.name}</h2>
             <span className="text-[11px] text-white/50">sector {selected.sectorId}</span>
           </div>
+          <section className="quest-progression" aria-label="Challenge progression">
+            <div><span>Constellation progress</span><strong>{sealed}/{catalog.length} sealed</strong></div>
+            <div className="quest-progression__track" aria-hidden><i style={{ width: `${catalog.length ? (sealed / catalog.length) * 100 : 0}%` }} /></div>
+            <p>{sealed === catalog.length ? 'Nebula mastery complete — every route is sealed.' : `${catalog.length - sealed} routes remain for full nebula mastery.`}</p>
+          </section>
           <div className="flex gap-2">
             <button
               type="button"

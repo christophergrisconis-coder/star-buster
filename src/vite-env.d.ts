@@ -8,6 +8,7 @@ interface ImportMetaEnv {
   readonly VITE_SITE_URL?: string
   readonly VITE_ADMIN_PASSWORD?: string
   readonly VITE_OWNER_PASSWORD?: string
+  readonly VITE_RIVE_HUD_URL?: string
 }
 
 interface ImportMeta {

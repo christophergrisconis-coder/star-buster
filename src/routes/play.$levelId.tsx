@@ -18,6 +18,7 @@ import { CAMPAIGN, LEVEL_BY_ID } from '~/data/campaign'
 import { createGame, howToClear, reduce } from '~/engine'
 import { isSwappable, type GameState } from '~/engine/types'
 import { ChallengeToast } from '~/fx/comboBanners'
+import { RoundFinaleFX } from '~/fx/roundFinaleFX'
 import { useHintCoach } from '~/hint/useHint'
 import { Board } from '~/ui/Board'
 import { FailSheet } from '~/ui/FailSheet'
@@ -49,6 +50,7 @@ import {
 import { kitItemIds, kitLabelForItem, slotById } from '~/data/kit'
 import { applyTutorialBoard, LESSONS, TUTORIAL_LEVEL, TUTORIAL_SUN } from '~/data/tutorial'
 import { hasCompletedTutorial, markTutorialComplete } from '~/lib/tutorial'
+import { useIsCoAdmin } from '~/lib/owner'
 
 export const Route = createFileRoute('/play/$levelId')({
   validateSearch: (raw: Record<string, unknown>) => ({
@@ -87,6 +89,7 @@ function PlayPage() {
   const { levelId } = useParams({ from: '/play/$levelId' })
   const search = Route.useSearch()
   const isLesson = levelId === 'tutorial'
+  const coAdmin = useIsCoAdmin()
   const isDaily = levelId === 'daily'
   const isWeekly = levelId === 'weekly'
   const id = isLesson || isDaily || isWeekly ? 0 : Number(levelId)
@@ -102,10 +105,11 @@ function PlayPage() {
   const level = useMemo(() => {
     if (isLesson) return TUTORIAL_LEVEL
     if (isDaily) return dailyLevel(utcDayKey(), Number.isFinite(search.seed) ? search.seed : undefined)
+    if (isWeekly) return weeklyLevel()
     const base = LEVEL_BY_ID[id] ?? getLevel(id)
     if (!base) return undefined
     return nebulaChallenge ? applyChallengeModifiers(base, nebulaChallenge) : base
-  }, [id, nebulaChallenge, isLesson, isDaily, search.seed])
+  }, [id, nebulaChallenge, isLesson, isDaily, isWeekly, search.seed])
   const challenges = useMemo(() => (level ? challengesForLevel(level) : []), [level])
   const navigate = useNavigate()
   const [state, setState] = useState<GameState | null>(() => {
@@ -440,6 +444,7 @@ function PlayPage() {
         return
       }
       bumpKit()
+      synth.boosterFire('hammer')
       setState((s) => (s ? reduce(s, { type: 'hammer', index }) : s))
       setBooster(null)
       if (lesson?.wait === 'booster') advanceLesson()
@@ -451,6 +456,7 @@ function PlayPage() {
         return
       }
       bumpKit()
+      synth.boosterFire('well')
       setState((s) => (s ? reduce(s, { type: 'well', index }) : s))
       setBooster(null)
       return
@@ -466,6 +472,7 @@ function PlayPage() {
         return
       }
       bumpKit()
+      synth.boosterFire('splash')
       setState((s) => (s ? reduce(s, { type: 'color-splash', index }) : s))
       setBooster(null)
       return
@@ -481,6 +488,7 @@ function PlayPage() {
         return
       }
       bumpKit()
+      synth.boosterFire('flare')
       setState((s) => {
         if (!s) return s
         const placed = reduce(s, { type: 'spawn-special', index, special: 'wrapped' })
@@ -504,33 +512,42 @@ function PlayPage() {
     lostEvent && lostEvent.type === 'status' && lostEvent.reason ? lostEvent.reason : 'Orbit goal not cleared'
 
   return (
-    <div className="relative space-y-3 px-3 pt-3">
-      <div className="flex items-center justify-between">
+    <div className="play-cockpit relative">
+      <RoundFinaleFX
+        active={state.status === 'finale' || state.status === 'won'}
+        intensity={state.status === 'won' ? 'won' : 'finale'}
+      />
+      <div className="play-masthead">
         <button
           type="button"
           onClick={() => {
             if (!isLesson && state.status === 'playing') spendLife()
             void navigate({ to: '/' })
           }}
-          className="text-[12px] text-white/60"
+          className="play-back"
         >
           ← Map
         </button>
-        <h1 className="display text-[22px] text-gold">{level.name}</h1>
+        <div className="play-title-group">
+          <span className="play-kicker">LIVE ORBIT</span>
+          <h1>{level.name}</h1>
+        </div>
         {isLesson ? (
           <button type="button" className="tutorial-skip-tab tutorial-skip-tab--inline" onClick={skipSchool}>
             Skip tutorial
           </button>
         ) : (
-          <span className="text-[11px] text-white/50">#{level.id}</span>
+          <span className="play-level-id">ORBIT {level.id}</span>
         )}
       </div>
       {nebulaChallenge ? (
-        <p className="rounded-full border border-magenta/40 bg-magenta/10 px-3 py-1 text-center text-[11px] text-magenta">
+        <p className="play-risk-banner">
           {nebulaChallenge.tier === 'high' ? `High risk · ${nebulaChallenge.title}` : nebulaChallenge.title}
           {nebulaChallenge.modifiers.cometTailMin ? ` · Tail x${nebulaChallenge.modifiers.cometTailMin}` : ''}
         </p>
       ) : null}
+      <div className="play-grid">
+      <aside className="play-command-rail">
       <HUD
         state={state}
         level={level}
@@ -551,6 +568,25 @@ function PlayPage() {
         cometDurationMs={cometMs}
         challenges={challenges}
         completedChallenges={typeof window === 'undefined' ? [] : completedChallenges(id)}
+        coAdmin={coAdmin}
+        challengeProgress={Object.fromEntries(challenges.map((challenge) => {
+          if (challenge.id === 'comet-tail') {
+            const target = 2 + level.sectorId
+            return [challenge.id, { current: peakTail, target, label: `${Math.min(peakTail, target)}/${target} tail`, complete: peakTail >= target }]
+          }
+          if (challenge.id === 'nova-combo') return [challenge.id, { current: sawSpecial ? 1 : 0, target: 1, label: sawSpecial ? 'Nova logged' : 'Awaiting power play', complete: sawSpecial }]
+          if (challenge.id === 'time-bank') {
+            const target = 12 + level.sectorId * 4
+            return [challenge.id, { current: state.timeLeft, target, label: `${state.timeLeft}s / ${target}s reserve`, complete: state.status === 'won' && state.timeLeft >= target }]
+          }
+          if (challenge.id === 'no-spread') return [challenge.id, { current: sawSpread ? 0 : 1, target: 1, label: sawSpread ? 'Bloom escaped' : 'Bloom contained', complete: state.status === 'won' && !sawSpread }]
+          if (challenge.id === 'no-hints') return [challenge.id, { current: hintCount === 0 ? 1 : 0, target: 1, label: hintCount === 0 ? 'Unaided' : 'Hint used', complete: state.status === 'won' && hintCount === 0 }]
+          if (challenge.id === 'speed-run') {
+            const target = Math.max(0, level.timeLimit - 35)
+            return [challenge.id, { current: state.timeLeft, target, label: `${Math.max(0, level.timeLimit - state.timeLeft)}s elapsed`, complete: state.status === 'won' && state.timeLeft >= target }]
+          }
+          return [challenge.id, { current: peakTail, target: 4, label: `${Math.min(peakTail, 4)}/4 cascade`, complete: peakTail >= 4 }]
+        }))}
         lessonFocus={lesson?.focus === 'goal' || lesson?.focus === 'comet' || lesson?.focus === 'challenges' ? lesson.focus : null}
       />
       {lesson ? (
@@ -564,6 +600,8 @@ function PlayPage() {
       ) : null}
       {denyNote ? <p className="text-center text-[12px] text-magenta">{denyNote}</p> : null}
       {kitNote ? <p className="text-center text-[12px] text-gold">{kitNote}</p> : null}
+      </aside>
+      <main className="play-action-deck">
       <div className="relative">
         <Board
           state={state}
@@ -603,13 +641,15 @@ function PlayPage() {
           }}
           onCell={tapBooster}
           onWave={(wave) => {
-            synth.pop(wave.combo)
-            synth.explode(wave.blast)
+            const reaction = wave.blast === 'L' ? 'supernova' : wave.combo >= 4 ? 'launch' : wave.combo === 3 ? 'dance' : wave.combo === 2 ? 'spin' : 'cry'
+            synth.matchReaction({ combo: wave.combo, destroyed: wave.destroyed.length, cause: wave.cause, reaction, coAdmin })
             if (wave.word) synth.banner(wave.word)
-            const hasStriped = wave.spawnedSpecials.some((s) => s.special === 'striped-h' || s.special === 'striped-v')
-            const hasColorBomb = wave.spawnedSpecials.some((s) => s.special === 'color-bomb')
+            const hasStriped = wave.activatedSpecials.some((s) => s.special === 'striped-h' || s.special === 'striped-v')
+            const hasColorBomb = wave.activatedSpecials.some((s) => s.special === 'color-bomb')
+            const hasWrapped = wave.activatedSpecials.some((s) => s.special === 'wrapped')
             if (hasColorBomb) synth.colorBombBlast()
             else if (hasStriped) synth.stripedClear()
+            else if (hasWrapped) synth.wrappedBurst()
           }}
           pickup={pickup}
           onCollectPickup={() => {
@@ -629,18 +669,23 @@ function PlayPage() {
           freeHammer={tutorialHammer > 0}
           counts={kitCounts}
           sector={level.sectorId}
-          onArm={(id) => setBooster((cur) => (cur === id ? null : id))}
+          onArm={(id) => {
+            synth.boosterArm(id)
+            setBooster((cur) => (cur === id ? null : id))
+          }}
           onInstant={(id: InstantBooster) => {
             if (state.status !== 'playing' || boardBusy) return
             if (id === 'moves') {
               if (!consumeItem('moves-5')) return
               bumpKit()
+              synth.boosterFire('moves')
               setState((s) => (s ? reduce(s, { type: 'add-moves', count: 5 }) : s))
               return
             }
             if (id === 'shuffle') {
               if (!consumeItem('star-shuffle')) return
               bumpKit()
+              synth.boosterFire('shuffle')
               setState((s) => (s ? reduce(s, { type: 'shuffle' }) : s))
               return
             }
@@ -653,6 +698,7 @@ function PlayPage() {
               if (!consumeAny(kitItemIds(slotById('shield')))) return
               shieldArmed.current = true
               bumpKit()
+              synth.boosterFire('shield')
               setKitNote('Wake shield armed for the next fade')
               window.setTimeout(() => setKitNote(null), 1800)
               return
@@ -663,11 +709,14 @@ function PlayPage() {
               return
             }
             bumpKit()
+            synth.boosterFire('orbit')
             const add = deep ? 35 : freeze ? 25 : 20
             setState((s) => (s ? { ...s, timeLeft: s.timeLeft + add } : s))
           }}
         />
       )}
+      </main>
+      </div>
       {badge ? (
         <p className="text-center text-[12px] text-gold">{badge}</p>
       ) : null}

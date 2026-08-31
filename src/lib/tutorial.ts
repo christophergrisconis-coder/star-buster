@@ -1,9 +1,15 @@
+import { accountStorageKey } from './progress'
+
 const KEY = 'star-buster-flight-school'
+
+function schoolKey() {
+  return accountStorageKey(KEY)
+}
 
 export function hasCompletedTutorial(): boolean {
   if (typeof window === 'undefined') return true
   try {
-    return localStorage.getItem(KEY) === 'done'
+    return localStorage.getItem(schoolKey()) === 'done'
   } catch {
     return false
   }
@@ -11,10 +17,10 @@ export function hasCompletedTutorial(): boolean {
 
 export function markTutorialComplete() {
   if (typeof window === 'undefined') return
-  localStorage.setItem(KEY, 'done')
+  localStorage.setItem(schoolKey(), 'done')
 }
 
 export function resetTutorial() {
   if (typeof window === 'undefined') return
-  localStorage.removeItem(KEY)
+  localStorage.removeItem(schoolKey())
 }

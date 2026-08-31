@@ -162,7 +162,7 @@ describe('matches', () => {
     expect(groups.some((g) => g.color === 'gold' && g.indices.length >= 3)).toBe(true)
   })
 
-  it('detects a 2x2 square and an L of three as matches consistently', () => {
+  it('detects a 2x2 square and an L/T shape of 5 as matches consistently', () => {
     const quiet = Array.from({ length: BOARD_SIZE }, (_, i) => {
       const x = i % BOARD_WIDTH
       const y = Math.floor(i / BOARD_WIDTH)
@@ -175,15 +175,28 @@ describe('matches', () => {
     square[idx(4, 4)] = starCell('red')
     expect(findMatches(square, BOARD_WIDTH, BOARD_HEIGHT).some((g) => g.indices.length >= 4)).toBe(true)
 
-    const ell = quiet.map((c) => ({ ...c }))
-    ell[idx(0, 0)] = starCell('cyan')
-    ell[idx(1, 0)] = starCell('cyan')
-    ell[idx(0, 1)] = starCell('cyan')
-    ell[idx(1, 1)] = starCell('gold')
-    ell[idx(2, 0)] = starCell('gold')
-    ell[idx(0, 2)] = starCell('gold')
-    expect(findMatches(ell, BOARD_WIDTH, BOARD_HEIGHT).some((g) => g.color === 'cyan' && g.indices.length >= 3)).toBe(true)
-    expect(findMatches(ell, BOARD_WIDTH, BOARD_HEIGHT, [idx(0, 0)]).some((g) => g.color === 'cyan' && g.indices.length >= 3)).toBe(true)
+    // L-shape of 5 stars (3 horizontal and 3 vertical sharing a corner)
+    const ell5 = quiet.map((c) => ({ ...c }))
+    ell5[idx(0, 0)] = starCell('cyan')
+    ell5[idx(1, 0)] = starCell('cyan')
+    ell5[idx(2, 0)] = starCell('cyan')
+    ell5[idx(0, 1)] = starCell('cyan')
+    ell5[idx(0, 2)] = starCell('cyan')
+    expect(findMatches(ell5, BOARD_WIDTH, BOARD_HEIGHT).some((g) => g.color === 'cyan' && g.kind === 'wrapped')).toBe(true)
+  })
+
+  it('plays a compact three-star corner as a Match 3', () => {
+    const quiet = Array.from({ length: BOARD_SIZE }, (_, i) => {
+      const x = i % BOARD_WIDTH
+      const y = Math.floor(i / BOARD_WIDTH)
+      return starCell(STAR_COLORS[(x + y * 2) % STAR_COLORS.length]!)
+    })
+    quiet[idx(4, 3)] = starCell('green')
+    quiet[idx(5, 3)] = starCell('green')
+    quiet[idx(4, 4)] = starCell('green')
+    quiet[idx(5, 4)] = starCell('gold')
+    const match = findMatches(quiet, BOARD_WIDTH, BOARD_HEIGHT).find((group) => group.color === 'green')
+    expect(match?.indices).toEqual(expect.arrayContaining([idx(4, 3), idx(5, 3), idx(4, 4)]))
   })
 
   it('opens without dead lined-up stars and always has a legal swap', () => {
@@ -285,6 +298,17 @@ describe('special combos', () => {
     expect(wave && wave.type === 'wave' && wave.destroyed.length).toBeGreaterThan(9)
     assertNoHoles(next)
     expect(next.score).toBeGreaterThanOrEqual(0)
+  })
+
+  it('swapping color-bomb with a regular colored star detonates all stars of that color', () => {
+    const state = createGame(level({ seed: 5 }))
+    const cells = state.cells.map((c) => ({ ...c }))
+    cells[idx(2, 2)] = { ...starCell('gold'), special: 'color-bomb', color: null }
+    cells[idx(3, 2)] = starCell('red')
+    const next = reduce({ ...state, cells }, { type: 'swap', a: idx(2, 2), b: idx(3, 2) })
+    const wave = next.events.find((e) => e.type === 'wave')
+    expect(wave && wave.type === 'wave').toBe(true)
+    assertNoHoles(next)
   })
 
   it('sun flare destroys a 3x3 neighborhood — bigger than a 3-match, not a board wipe', () => {

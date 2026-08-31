@@ -2,12 +2,13 @@ import { useEffect, type ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
 import { UniverseBackground } from '~/fx/universeBackground'
 import { WarpOverlay } from '~/fx/warpBurst'
+import { RiveMotionLayer } from '~/fx/RiveMotionLayer'
 import { LivesPips } from './LivesPips'
 import { MuteButton } from './MuteButton'
 import { Tabs } from './Tabs'
-import { hydrateOwnerAccess } from '~/lib/owner'
-import { getInventory } from '~/lib/progress'
-import { AnaclaraLoveModal } from './AnaclaraLoveModal'
+import { hydrateOwnerAccess, useIsCoAdmin } from '~/lib/owner'
+import { applyLifeRegen, getInventory } from '~/lib/progress'
+import { DailyPilotGreetings } from './DailyPilotGreetings'
 
 export function ThemeToggle() {
   const toggle = () => {
@@ -36,17 +37,20 @@ export function ThemeToggle() {
 }
 
 export function Shell({ children }: { children: ReactNode }) {
+  const isCoAdmin = useIsCoAdmin()
   useEffect(() => {
     hydrateOwnerAccess()
+    applyLifeRegen()
   }, [])
   return (
     <>
       <UniverseBackground />
       <WarpOverlay />
-      <div className="app-frame relative z-10 mx-auto flex min-h-dvh max-w-[430px] flex-col pb-10">
+      <RiveMotionLayer />
+      <div className={`app-frame relative z-10 mx-auto flex min-h-dvh max-w-[430px] flex-col pb-10${isCoAdmin ? ' app-frame--coadmin' : ''}`}>
         <header className="relative z-20 flex items-center justify-between px-3 pt-3">
           <Link to="/" className="display text-[17px] tracking-[0.04em] text-gold">
-            Star Buster
+            {isCoAdmin ? 'Anaclara’s Star Buster' : 'Star Buster'}
           </Link>
           <div className="flex items-center gap-1.5">
             <LivesPips lives={typeof window === 'undefined' ? 5 : getInventory().lives} compact />
@@ -54,10 +58,11 @@ export function Shell({ children }: { children: ReactNode }) {
             <ThemeToggle />
           </div>
         </header>
+        {isCoAdmin ? <p className="coadmin-sigil">Co-admin constellation · private pilot bay</p> : null}
         <Tabs />
         <div className="app-main relative z-10 min-h-0 flex-1">{children}</div>
       </div>
-      <AnaclaraLoveModal />
+      <DailyPilotGreetings />
     </>
   )
 }

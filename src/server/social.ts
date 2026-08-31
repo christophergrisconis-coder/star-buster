@@ -101,11 +101,14 @@ export const submitDailyScore = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     const ctx = await client()
     if (!ctx) return { ok: false as const }
-    const { error } = await ctx.supabase.from('daily_scores').upsert({
-      user_id: ctx.userId,
-      day: data.day,
-      score: data.score,
-    })
+    const { error } = await ctx.supabase.from('daily_scores').upsert(
+      {
+        user_id: ctx.userId,
+        day: data.day,
+        score: data.score,
+      },
+      { onConflict: 'user_id,day' },
+    )
     if (error) throw new Error(error.message)
     return { ok: true as const }
   })

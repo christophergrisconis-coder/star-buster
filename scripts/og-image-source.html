@@ -1,0 +1,53 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><style>
+  * { margin: 0; box-sizing: border-box; }
+  body { width: 1200px; height: 630px; overflow: hidden; font-family: -apple-system, 'Segoe UI', sans-serif; }
+  .scene {
+    position: relative; width: 1200px; height: 630px;
+    background:
+      radial-gradient(ellipse 90% 60% at 50% -10%, rgba(72,28,120,.8) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 45% at 90% 80%, rgba(12,70,82,.55) 0%, transparent 65%),
+      #07060f;
+  }
+  .galaxy { position: absolute; inset: 0; background: url('http://localhost:4173/voyage/galaxy-2.jpg') center/cover; mix-blend-mode: screen; opacity: .5; }
+  .stars span { position: absolute; border-radius: 50%; background: #fff; }
+  .title {
+    position: absolute; left: 70px; top: 200px; z-index: 3;
+    font-size: 108px; font-weight: 900; letter-spacing: 2px; line-height: .95;
+    background: linear-gradient(180deg, #fff8d0 0%, #ffd24a 45%, #ff9f1c 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 6px 24px rgba(255, 210, 74, .5));
+  }
+  .tag { position: absolute; left: 74px; top: 430px; z-index: 3; font-size: 30px; color: rgba(255,255,255,.85); font-weight: 600; }
+  .sub { position: absolute; left: 74px; top: 478px; z-index: 3; font-size: 22px; color: #5ce1ff; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; }
+  .luma { position: absolute; z-index: 2; filter: drop-shadow(0 10px 40px rgba(255,210,74,.45)); }
+  .l1 { right: 60px; top: 60px; width: 380px; transform: rotate(6deg); }
+  .l2 { right: 400px; top: 330px; width: 190px; transform: rotate(-10deg); z-index: 1; filter: drop-shadow(0 8px 30px rgba(255,43,214,.5)); }
+  .row { position: absolute; left: 74px; top: 90px; z-index: 3; display: flex; gap: 18px; }
+  .row img { width: 72px; filter: drop-shadow(0 4px 14px rgba(0,0,0,.6)); }
+</style></head>
+<body>
+  <div class="scene">
+    <div class="galaxy"></div>
+    <div class="stars" id="stars"></div>
+    <div class="row">
+      <img src="http://localhost:4173/stars/red.png"><img src="http://localhost:4173/stars/green.png"><img src="http://localhost:4173/stars/blue.png"><img src="http://localhost:4173/stars/purple.png"><img src="http://localhost:4173/stars/cyan.png">
+    </div>
+    <div class="title">STAR<br>BUSTER</div>
+    <div class="tag">Glide a solar system. Burst superstar gems.</div>
+    <div class="sub">330 levels · Free to play</div>
+    <img class="luma l1" src="http://localhost:4173/luma-star.png">
+    <img class="luma l2" src="http://localhost:4173/luma-heart.png">
+  </div>
+  <script>
+    const c = document.getElementById('stars');
+    let seed = 7;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    for (let i = 0; i < 90; i++) {
+      const s = document.createElement('span');
+      const size = 1 + rnd() * 2.5;
+      s.style.cssText = 'left:' + (rnd() * 1200) + 'px;top:' + (rnd() * 630) + 'px;width:' + size + 'px;height:' + size + 'px;opacity:' + (0.3 + rnd() * 0.7);
+      c.appendChild(s);
+    }
+  </script>
+</body></html>

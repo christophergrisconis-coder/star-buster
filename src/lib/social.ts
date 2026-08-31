@@ -1,6 +1,6 @@
 import { LOCAL_CREW } from '~/data/friends'
 import { LIFE_SEND_COOLDOWN_MS } from '~/data/gifts'
-import { consumeItem, grantItem, grantLives, spendSpareLife, type LocalFriend } from './progress'
+import { accountStorageKey, consumeItem, grantItem, grantLives, spendSpareLife, type LocalFriend } from './progress'
 
 const MAIL = 'star-buster-mail'
 const GIFTS = 'star-buster-gifts'
@@ -32,7 +32,7 @@ export interface PendingCrew {
 function read<T>(key: string, fallback: T): T {
   if (typeof window === 'undefined') return fallback
   try {
-    const raw = localStorage.getItem(key)
+    const raw = localStorage.getItem(accountStorageKey(key))
     return raw ? (JSON.parse(raw) as T) : fallback
   } catch {
     return fallback
@@ -41,7 +41,7 @@ function read<T>(key: string, fallback: T): T {
 
 function write(key: string, value: unknown) {
   if (typeof window === 'undefined') return
-  localStorage.setItem(key, JSON.stringify(value))
+  localStorage.setItem(accountStorageKey(key), JSON.stringify(value))
 }
 
 export function getMail(): MailItem[] {
@@ -69,8 +69,9 @@ export function getPendingCrew(): PendingCrew[] {
 
 export function seedIncomingPing() {
   if (typeof window === 'undefined') return
-  if (localStorage.getItem('star-buster-ping-seeded')) return
-  localStorage.setItem('star-buster-ping-seeded', '1')
+  const seededKey = accountStorageKey('star-buster-ping-seeded')
+  if (localStorage.getItem(seededKey)) return
+  localStorage.setItem(seededKey, '1')
   const ping = LOCAL_CREW[0]!
   write(PENDING, [
     {

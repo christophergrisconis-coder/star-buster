@@ -67,6 +67,23 @@ export interface SpawnedSpecial {
   special: SpecialKind
 }
 
+export interface ActivatedSpecial {
+  index: number
+  special: SpecialKind
+}
+
+export type WaveCause =
+  | 'match'
+  | 'cascade'
+  | 'ignite'
+  | 'special-combo'
+  | 'hammer'
+  | 'well'
+  | 'shuffle'
+  | 'splash'
+  | 'finale'
+  | 'settle'
+
 export interface RefillCell {
   index: number
   color: StarColor
@@ -82,6 +99,10 @@ export type EngineEvent =
       blast: BlastSize
       destroyed: number[]
       spawnedSpecials: SpawnedSpecial[]
+      /** Ordered specials that actually detonated during this wave. */
+      activatedSpecials: ActivatedSpecial[]
+      /** Gameplay action that initiated the wave; visual/audio only. */
+      cause: WaveCause
       gravity: GravityMove[]
       refill: RefillCell[]
       groups: number

@@ -1,5 +1,6 @@
 import { KIT_SLOTS, kitItemIds, type KitSlotId } from '~/data/kit'
 import { countItems, isAdminPilot } from '~/lib/progress'
+import { useIsCoAdmin } from '~/lib/owner'
 import { KitIcon } from './KitIcon'
 
 export type BoosterId = KitSlotId
@@ -25,12 +26,13 @@ export function BoosterTray({
   counts: Record<KitSlotId, number>
   sector: number
 }) {
+  const isCoAdmin = useIsCoAdmin()
   return (
     <div className={`booster-tray ${lesson ? 'lesson-focus' : ''}`}>
       <p className="px-1 text-[10px] uppercase tracking-[0.2em] text-white/45">Solar kit</p>
       <div className="flex gap-2 overflow-x-auto pb-1 pt-1">
         {KIT_SLOTS.map((item) => {
-          const locked = !isAdminPilot() && sector < item.minSector
+          const locked = !isAdminPilot() && !isCoAdmin && sector < item.minSector
           const owned = item.id === 'hammer' && freeHammer ? Math.max(1, counts[item.id]) : counts[item.id]
           const isArmed = armed === item.id
           const empty = !locked && owned <= 0
@@ -38,7 +40,7 @@ export function BoosterTray({
             <button
               key={item.id}
               type="button"
-              disabled={locked || empty}
+              disabled={disabled || locked || empty}
               title={
                 locked
                   ? `Unlocks in sector ${item.minSector}`
@@ -54,7 +56,7 @@ export function BoosterTray({
                 }
                 onArm(item.id as ArmedBooster)
               }}
-              className={`booster-slot ${isArmed ? 'booster-slot--armed' : ''} ${empty ? 'booster-slot--empty' : ''} ${locked ? 'booster-slot--locked' : ''}`}
+              className={`booster-slot ${isArmed ? 'booster-slot--armed' : ''} ${empty ? 'booster-slot--empty' : ''} ${locked ? 'booster-slot--locked' : ''}${disabled ? ' booster-slot--busy' : ''}`}
             >
               <KitIcon id={item.id} armed={isArmed} />
               <span className="booster-slot-label">{item.label}</span>

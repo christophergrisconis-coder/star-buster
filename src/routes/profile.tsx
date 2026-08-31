@@ -12,13 +12,14 @@ import {
   getEquippedTitle,
   setEquippedTitle,
 } from '~/lib/progress'
-import { getOwnerSession, OWNER_EMAIL, hydrateOwnerAccess, signOutOwner } from '~/lib/owner'
+import { getOwnerSession, OWNER_EMAIL, hydrateOwnerAccess, isFamilyDevice, signOutOwner } from '~/lib/owner'
 import { ProfileSkeleton } from '~/ui/skeletons'
 import { createBrowserSupabase } from '~/lib/supabase/client'
 import { BADGES, PILOT_TITLES } from '~/data/rewards'
 import { DailyStreakModal } from '~/ui/DailyStreakModal'
 import { canClaimToday } from '~/data/streak'
 import { useNavigate } from '@tanstack/react-router'
+import { BadgeIcon } from '~/ui/BadgeIcon'
 
 export const Route = createFileRoute('/profile')({
   beforeLoad: async () => {
@@ -49,7 +50,11 @@ function ProfilePage() {
       if (owner) {
         return {
           id: owner.email,
-          profile: { id: owner.email, display_name: owner.displayName, avatar_url: null },
+          profile: {
+            id: owner.email,
+            display_name: owner.displayName,
+            avatar_url: owner.avatarUrl ?? (owner.role === 'co-admin' ? '/luma-heart-128.png' : '/luma-star-128.png'),
+          },
         }
       }
       return getSessionUser()
@@ -69,6 +74,7 @@ function ProfilePage() {
   const completed = progress ? Object.values(progress.levels).filter((l) => l.completed).length : 0
   const totalStars = progress ? Object.values(progress.levels).reduce((sum, l) => sum + (l.stars || 0), 0) : 0
   const streakCount = progress?.cometStreak ?? 0
+  const avatarUrl = q.data?.profile?.avatar_url
 
   return (
     <div className="space-y-4 px-4 pt-4 pb-12">
@@ -78,7 +84,7 @@ function ProfilePage() {
           onClick={() => {
             const next = taps + 1
             setTaps(next)
-            if (next >= 7) {
+            if (next >= 7 && isFamilyDevice()) {
               setAdminPilot(true)
               unlockAdminVoyage()
               setAdmin(true)
@@ -102,12 +108,21 @@ function ProfilePage() {
       </div>
 
       {/* Pilot Card */}
-      <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-3.5">
-        <div className="grid h-16 w-16 place-items-center rounded-full bg-magenta/30 text-[22px] font-bold text-magenta border border-magenta/50">
-          {(q.data?.profile?.display_name ?? 'G')[0]}
-        </div>
+      <div className="flex items-center gap-3.5 rounded-2xl border border-white/10 bg-white/5 p-3.5 shadow-lg backdrop-blur-sm">
+        {avatarUrl ? (
+          <div className="relative h-16 w-16 shrink-0 rounded-full border-2 border-pink-400/60 bg-pink-950/30 p-1 shadow-[0_0_18px_rgba(236,72,153,0.4)]">
+            <img src={avatarUrl} alt="Pilot Avatar" className="h-full w-full object-contain drop-shadow-[0_2px_8px_rgba(255,210,74,0.6)]" />
+          </div>
+        ) : (
+          <div className="grid h-16 w-16 place-items-center rounded-full bg-magenta/30 text-[22px] font-bold text-magenta border border-magenta/50">
+            {(q.data?.profile?.display_name ?? 'G')[0]}
+          </div>
+        )}
         <div className="flex-1 min-w-0">
-          <div className="text-[17px] font-bold text-white truncate">{q.data?.profile?.display_name ?? 'Guest Pilot'}</div>
+          <div className="text-[17px] font-bold text-white truncate flex items-center gap-1.5">
+            {q.data?.profile?.display_name ?? 'Guest Pilot'}
+            {avatarUrl?.includes('heart') ? <span className="text-[13px]">💖</span> : null}
+          </div>
           <div className="text-[12px] font-semibold text-gold tracking-wide">✦ {equipped} ✦</div>
           <div className="text-[11px] text-white/40">{q.data?.profile ? 'Signed in' : 'Local orbit session'}</div>
         </div>
@@ -185,7 +200,9 @@ function ProfilePage() {
                     : 'border-white/5 bg-black/20 text-white/25 opacity-60'
                 }`}
               >
-                <div className="text-[24px]">{b.icon}</div>
+                <div className="grid h-8 place-items-center">
+                  <BadgeIcon icon={b.icon} className="h-7 w-7" color={hasBadge ? '#ffd24a' : '#8a8a99'} />
+                </div>
                 <div className="mt-1 text-[11px] font-bold">{b.name}</div>
                 <div className="text-[9px] opacity-70">Orbit {b.at}</div>
               </div>

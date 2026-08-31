@@ -4,7 +4,7 @@ import { createGame, reduce } from '~/engine'
 import type { GameState, LevelConfig } from '~/engine/types'
 import { Board } from '~/ui/Board'
 import { synth } from '~/audio/synth'
-import { getInventory } from '~/lib/progress'
+import { getInventory, saveInventory } from '~/lib/progress'
 
 const ZEN_LEVEL_CONFIG: LevelConfig = {
   id: 9999,
@@ -64,7 +64,7 @@ function ZenOrbitPage() {
       // Grant stardust to inventory
       const inv = getInventory()
       inv.stardust = (inv.stardust || 0) + added
-      localStorage.setItem('star-buster-inventory', JSON.stringify(inv))
+      saveInventory(inv)
 
       synth.fanfare()
       setShowMilestoneToast(true)
