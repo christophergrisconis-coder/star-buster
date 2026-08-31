@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "build": "vite build",
+    "build": "NITRO_PRESET=cloudflare-pages vite build",
     "preview": "vite preview",
     "start": "node .output/server/index.mjs",
     "test": "vitest run",
