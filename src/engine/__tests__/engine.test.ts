@@ -185,6 +185,20 @@ describe('matches', () => {
     expect(findMatches(ell5, BOARD_WIDTH, BOARD_HEIGHT).some((g) => g.color === 'cyan' && g.kind === 'wrapped')).toBe(true)
   })
 
+  it('plays a compact three-star corner as a Match 3', () => {
+    const quiet = Array.from({ length: BOARD_SIZE }, (_, i) => {
+      const x = i % BOARD_WIDTH
+      const y = Math.floor(i / BOARD_WIDTH)
+      return starCell(STAR_COLORS[(x + y * 2) % STAR_COLORS.length]!)
+    })
+    quiet[idx(4, 3)] = starCell('green')
+    quiet[idx(5, 3)] = starCell('green')
+    quiet[idx(4, 4)] = starCell('green')
+    quiet[idx(5, 4)] = starCell('gold')
+    const match = findMatches(quiet, BOARD_WIDTH, BOARD_HEIGHT).find((group) => group.color === 'green')
+    expect(match?.indices).toEqual(expect.arrayContaining([idx(4, 3), idx(5, 3), idx(4, 4)]))
+  })
+
   it('opens without dead lined-up stars and always has a legal swap', () => {
     for (const seed of [1, 7, 12, 42, 99, 404]) {
       const state = createGame(level({ seed, colorCount: 5 }))

@@ -1,4 +1,8 @@
 
+import { useEffect } from 'react'
+import { accountStorageKey } from '~/lib/progress'
+import { synth } from '~/audio/synth'
+
 const LOVE_MESSAGES = [
   'Good morning Anaclara! You are the light of my life and my one true love forever and always.',
   'Rise and shine beautiful! Remember that no matter what, you will always be my true love.',
@@ -21,13 +25,15 @@ function todayStamp() {
 
 export function shouldShowAnaclaraLoveToday() {
   if (typeof window === 'undefined') return false
-  return localStorage.getItem(ANACLARA_LAST_SEEN_KEY) !== todayStamp()
+  return localStorage.getItem(accountStorageKey(ANACLARA_LAST_SEEN_KEY)) !== todayStamp()
 }
 
 export function takeAnaclaraLoveMessage() {
-  const index = Number(localStorage.getItem(ANACLARA_MSG_KEY) || '0')
-  localStorage.setItem(ANACLARA_MSG_KEY, String((index + 1) % LOVE_MESSAGES.length))
-  localStorage.setItem(ANACLARA_LAST_SEEN_KEY, todayStamp())
+  const messageKey = accountStorageKey(ANACLARA_MSG_KEY)
+  const seenKey = accountStorageKey(ANACLARA_LAST_SEEN_KEY)
+  const index = Number(localStorage.getItem(messageKey) || '0')
+  localStorage.setItem(messageKey, String((index + 1) % LOVE_MESSAGES.length))
+  localStorage.setItem(seenKey, todayStamp())
   return LOVE_MESSAGES[index % LOVE_MESSAGES.length]!
 }
 
@@ -38,6 +44,9 @@ export function AnaclaraLoveModal({
   message: string
   onClose?: () => void
 }) {
+  useEffect(() => {
+    void synth.resume().then(() => synth.loveChime())
+  }, [])
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-md animate-fade-in">
@@ -60,7 +69,10 @@ export function AnaclaraLoveModal({
 
         <button
           type="button"
-          onClick={() => onClose?.()}
+          onClick={() => {
+            synth.loveChime()
+            onClose?.()
+          }}
           className="w-full rounded-2xl bg-gradient-to-r from-pink-500 via-rose-500 to-pink-500 py-3 text-[15px] font-bold text-white shadow-[0_0_25px_rgba(236,72,153,0.5)] transition-transform active:scale-95 hover:opacity-90"
         >
           I Love You Too, Chris ❤️

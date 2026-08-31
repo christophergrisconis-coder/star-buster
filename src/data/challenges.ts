@@ -177,26 +177,13 @@ export function challengesForLevel(level: LevelConfig): Challenge[] {
   }
 
   const rotation: ChallengeId[] = ['comet-tail', 'nova-combo', 'time-bank', 'no-spread', 'no-hints', 'speed-run', 'cascade-surge']
-  const primary = rotation[level.id % rotation.length]!
-  const picked = new Set<ChallengeId>([primary])
-  if (level.id > 10) {
-    picked.add(rotation[(level.id + 2) % rotation.length]!)
-  }
-  if (sector >= 3) {
-    picked.add(rotation[(level.id + 3) % rotation.length]!)
-  }
-  if (primary === 'no-spread' && level.chocolate.length === 0) {
-    picked.delete('no-spread')
-    picked.add('comet-tail')
-  }
-  if (primary === 'no-hints' && level.objective.type !== 'order') {
-    picked.delete('no-hints')
-    picked.add('time-bank')
-  }
-  if (picked.has('no-spread') && level.chocolate.length === 0) {
-    picked.delete('no-spread')
-    if (!picked.has('nova-combo')) picked.add('nova-combo')
-    else picked.add('comet-tail')
+  const desired = sector >= 4 ? 4 : sector >= 2 ? 3 : level.id > 10 ? 2 : 1
+  const picked = new Set<ChallengeId>()
+  for (let offset = 0; offset < rotation.length && picked.size < desired; offset++) {
+    const id = rotation[(level.id + offset) % rotation.length]!
+    if (id === 'no-spread' && level.chocolate.length === 0) continue
+    if (id === 'no-hints' && level.objective.type !== 'order') continue
+    picked.add(id)
   }
 
   return [...picked].map((id) => catalog[id]!)

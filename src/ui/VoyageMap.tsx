@@ -55,7 +55,7 @@ function buildNodes(includeSchool: boolean): PathNode[] {
       sectorName: sector?.name ?? 'Sector',
       sectorColor: sector?.color ?? '#6b7c8a',
       systemName: system?.name ?? '',
-      look: planetLook(i + 1),
+      look: planetLook(i + 1, nebula.id),
       firstLevelId: orbits[0] ?? 1,
       orbits: orbits.length,
     })

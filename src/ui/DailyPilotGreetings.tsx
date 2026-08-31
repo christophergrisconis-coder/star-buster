@@ -9,17 +9,23 @@ export function DailyPilotGreetings() {
   const [story, setStory] = useState<DailyStory | null>(null)
 
   useEffect(() => {
-    const session = getOwnerSession()
-    const isAna = session?.role === 'co-admin'
-    if (isAna && shouldShowAnaclaraLoveToday()) {
-      setLoveMessage(takeAnaclaraLoveMessage())
-      return
+    const checkGreetings = () => {
+      const session = getOwnerSession()
+      const isAna = session?.role === 'co-admin'
+      if (isAna && shouldShowAnaclaraLoveToday()) {
+        setLoveMessage(takeAnaclaraLoveMessage())
+        return
+      }
+      const next = peekDailyStory()
+      if (next) {
+        markDailyStoryShown()
+        setStory(next)
+      }
     }
-    const next = peekDailyStory()
-    if (next) {
-      markDailyStoryShown()
-      setStory(next)
-    }
+
+    checkGreetings()
+    window.addEventListener('owner-session-changed', checkGreetings)
+    return () => window.removeEventListener('owner-session-changed', checkGreetings)
   }, [])
 
   const afterLove = () => {

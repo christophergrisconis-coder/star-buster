@@ -10,7 +10,7 @@ import {
   type GachaPrize,
   type GachaRarity,
 } from '~/data/gacha'
-import { getInventory, grantCoins, grantItem, grantLives, spendStardust } from '~/lib/progress'
+import { accountStorageKey, getInventory, grantCoins, grantItem, grantLives, grantStardust, spendStardust } from '~/lib/progress'
 import { synth } from '~/audio/synth'
 
 const HISTORY_KEY = 'star-buster-gacha-history'
@@ -18,14 +18,14 @@ const HISTORY_KEY = 'star-buster-gacha-history'
 function loadHistory(): GachaPrize[] {
   if (typeof window === 'undefined') return []
   try {
-    return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]')
+    return JSON.parse(localStorage.getItem(accountStorageKey(HISTORY_KEY)) || '[]')
   } catch {
     return []
   }
 }
 
 function saveHistory(list: GachaPrize[]) {
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(list.slice(0, 50)))
+  localStorage.setItem(accountStorageKey(HISTORY_KEY), JSON.stringify(list.slice(0, 50)))
 }
 
 function grantPrize(prize: GachaPrize) {
@@ -41,10 +41,7 @@ function grantPrize(prize: GachaPrize) {
       grantCoins(prize.quantity)
       break
     case 'stardust':
-      grantCoins(0)
-      const inv = getInventory()
-      inv.stardust += prize.quantity
-      localStorage.setItem('star-buster-inventory', JSON.stringify(inv))
+      grantStardust(prize.quantity)
       break
     case 'lives':
       grantLives(prize.quantity)

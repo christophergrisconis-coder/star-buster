@@ -18,6 +18,11 @@ export type PlanetLook = {
   kind: PlanetKind
   src: string
   glow: string
+  atmosphere: string
+  terrain: string
+  bandAngle: number
+  craterX: number
+  craterY: number
   tilt: number
   spin: number
 }
@@ -39,19 +44,34 @@ function mix(id: number, salt: number) {
   return Math.abs((id * 7919 + salt * 2971) % 1000) / 1000
 }
 
+function stableId(id: number, themeKey?: string) {
+  if (!themeKey) return id
+  let hash = id | 0
+  for (let i = 0; i < themeKey.length; i++) hash = Math.imul(hash ^ themeKey.charCodeAt(i), 16777619)
+  return hash >>> 0
+}
+
 function photo(kind: PlanetKind) {
   return `/voyage/planets/${kind}.png?v=5`
 }
 
-export function planetLook(id: number): PlanetLook {
+export function planetLook(id: number, themeKey?: string): PlanetLook {
+  const seededId = stableId(id, themeKey)
   const kind = PLANET_KINDS[(Math.abs(id) - 1 + PLANET_KINDS.length) % PLANET_KINDS.length]!
+  const hue = Math.round(mix(seededId, 23) * 360)
+  const warm = Math.round((hue + 32 + mix(seededId, 29) * 26) % 360)
   return {
     id,
     kind,
     src: photo(kind),
     glow: GLOW[kind],
-    tilt: -10 + mix(id, 3) * 20,
-    spin: 18 + mix(id, 11) * 22,
+    atmosphere: `hsla(${hue} 82% 67% / 0.52)`,
+    terrain: `hsla(${warm} 64% 43% / 0.45)`,
+    bandAngle: Math.round(-38 + mix(seededId, 31) * 76),
+    craterX: Math.round(24 + mix(seededId, 37) * 48),
+    craterY: Math.round(28 + mix(seededId, 41) * 42),
+    tilt: -10 + mix(seededId, 3) * 20,
+    spin: 18 + mix(seededId, 11) * 22,
   }
 }
 
@@ -74,6 +94,11 @@ export function schoolLook(): PlanetLook {
     kind: 'luna',
     src: '/voyage/planets/luna.png?v=5',
     glow: '#ffd24a',
+    atmosphere: 'rgba(255, 210, 74, 0.45)',
+    terrain: 'rgba(198, 116, 48, 0.38)',
+    bandAngle: -18,
+    craterX: 38,
+    craterY: 52,
     tilt: 8,
     spin: 28,
   }

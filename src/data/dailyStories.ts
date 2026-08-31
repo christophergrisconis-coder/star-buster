@@ -7,6 +7,8 @@ export type DailyStory = {
   reminder: string
 }
 
+import { accountStorageKey } from '~/lib/progress'
+
 export const DAILY_STORIES: DailyStory[] = [
   {
     mood: 'humble',
@@ -123,15 +125,15 @@ export function moodLabel(mood: StoryMood): string {
 export function peekDailyStory(at = Date.now()): DailyStory | null {
   if (typeof window === 'undefined') return null
   const today = utcDayStamp(at)
-  if (localStorage.getItem(STORY_SEEN_KEY) === today) return null
-  const index = Number(localStorage.getItem(STORY_INDEX_KEY) || '0')
-  return DAILY_STORIES[index % DAILY_STORIES.length]!
+  if (localStorage.getItem(accountStorageKey(STORY_SEEN_KEY)) === today) return null
+  // Same date, same story for every pilot; viewing it no longer advances the
+  // global selection or hides it from another account on the same device.
+  const index = Number(today.replaceAll('-', '')) % DAILY_STORIES.length
+  return DAILY_STORIES[index]!
 }
 
 export function markDailyStoryShown(at = Date.now()): void {
   if (typeof window === 'undefined') return
   const today = utcDayStamp(at)
-  const index = Number(localStorage.getItem(STORY_INDEX_KEY) || '0')
-  localStorage.setItem(STORY_INDEX_KEY, String((index + 1) % DAILY_STORIES.length))
-  localStorage.setItem(STORY_SEEN_KEY, today)
+  localStorage.setItem(accountStorageKey(STORY_SEEN_KEY), today)
 }

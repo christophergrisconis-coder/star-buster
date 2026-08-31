@@ -94,7 +94,9 @@ export const LESSONS: LessonStep[] = [
   },
 ]
 
-const COLORS: StarColor[] = ['gold', 'red', 'green', 'blue', 'purple', 'cyan']
+// Keep training readable: cyan belongs to the objective wells, not a surprise
+// sixth playable star that looks like a special piece.
+const COLORS: StarColor[] = ['gold', 'red', 'green', 'blue', 'purple']
 
 function paint(color: StarColor, extra?: Partial<Cell>): Cell {
   return { ...starCell(color), ...extra }
@@ -119,7 +121,7 @@ export const TUTORIAL_LEVEL: LevelConfig = {
   chocolate: [],
   bombs: [],
   jelly: Array.from({ length: BOARD_SIZE }, (_, i) =>
-    [idx(3, 6), idx(1, 7), idx(2, 7), idx(3, 7), idx(2, 8), idx(3, 8), idx(4, 8), idx(5, 8)].includes(i)
+    [idx(1, 2), idx(5, 2), idx(8, 3), idx(2, 5), idx(6, 5), idx(1, 8), idx(5, 8), idx(8, 7)].includes(i)
       ? 1
       : 0,
   ),
@@ -140,10 +142,13 @@ export function applyTutorialBoard(state: GameState): GameState {
   })
   cells[idx(1, 7)] = { ...paint('gold'), jelly: cells[idx(1, 7)]!.jelly }
   cells[idx(2, 7)] = { ...paint('gold'), jelly: cells[idx(2, 7)]!.jelly }
+  // Keep the coached pair quiet until the player swaps. With compact L-shaped
+  // Match 3 enabled, this lower corner must not also be gold.
+  cells[idx(1, 8)] = { ...paint('purple'), jelly: cells[idx(1, 8)]!.jelly }
   cells[idx(3, 7)] = { ...paint('blue'), jelly: cells[idx(3, 7)]!.jelly }
   cells[idx(3, 6)] = { ...paint('gold'), jelly: cells[idx(3, 6)]!.jelly }
   cells[idx(2, 6)] = { ...paint('red'), jelly: cells[idx(2, 6)]!.jelly }
-  cells[idx(4, 6)] = { ...paint('cyan'), jelly: cells[idx(4, 6)]!.jelly }
+  cells[idx(4, 6)] = { ...paint('blue'), jelly: cells[idx(4, 6)]!.jelly }
   cells[TUTORIAL_SUN] = { ...paint('gold'), special: 'wrapped', jelly: cells[TUTORIAL_SUN]!.jelly }
   return {
     ...state,

@@ -1,4 +1,5 @@
 import { setAdminPilot, unlockAdminVoyage, setEquippedTitle } from './progress'
+import { useState, useEffect } from 'react'
 
 export const OWNER_EMAIL = 'admnowner@advancedcreationstudio.com'
 export const CO_ADMIN_EMAIL = 'ana.rankin96@gmail.com'
@@ -139,6 +140,17 @@ export function isCoAdminPilot(): boolean {
   return getOwnerSession()?.role === 'co-admin'
 }
 
+export function useIsCoAdmin(): boolean {
+  const [isCoAdmin, setIsCoAdmin] = useState(false)
+  useEffect(() => {
+    setIsCoAdmin(isCoAdminPilot())
+    const onChange = () => setIsCoAdmin(isCoAdminPilot())
+    window.addEventListener('owner-session-changed', onChange)
+    return () => window.removeEventListener('owner-session-changed', onChange)
+  }, [])
+  return isCoAdmin
+}
+
 export function persistOwnerSession(acc: AdminAccount): void {
   if (typeof window === 'undefined') return
   const session: OwnerSession = {
@@ -149,6 +161,7 @@ export function persistOwnerSession(acc: AdminAccount): void {
   }
   localStorage.setItem(OWNER_SESSION, JSON.stringify(session))
   document.cookie = `${OWNER_SESSION}=${encodeURIComponent(JSON.stringify(session))}; Path=/; Max-Age=31536000; SameSite=Lax`
+  window.dispatchEvent(new Event('owner-session-changed'))
 }
 
 export function activateOwnerAccount(account?: AdminAccount): void {
@@ -227,4 +240,5 @@ export function signOutOwner() {
   localStorage.removeItem(OWNER_SESSION)
   document.cookie = `${OWNER_SESSION}=; Path=/; Max-Age=0; SameSite=Lax`
   setAdminPilot(false)
+  window.dispatchEvent(new Event('owner-session-changed'))
 }

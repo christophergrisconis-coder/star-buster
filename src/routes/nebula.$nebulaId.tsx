@@ -31,7 +31,7 @@ function NebulaPage() {
   const sector = CAMPAIGN.sectors.find((s) => s.id === system?.sectorId)
   const theme = nebulaTheme(nebula.id, sector?.color)
   const worldIndex = Math.max(0, CAMPAIGN.nebulas.findIndex((n) => n.id === nebula.id))
-  const look = planetLook(worldIndex + 1)
+  const look = planetLook(worldIndex + 1, nebula.id)
   const ids = nebulaLevelIds(nebula.id)
   const cleared = ids.filter((id) => progress.levels[id]?.completed).length
   const variants = challengesForNebula(nebula.id)

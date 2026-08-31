@@ -33,6 +33,41 @@ function pickIndices(rand: () => number, count: number, avoid = new Set<number>(
   return out
 }
 
+/**
+ * Jelly is a board objective, not a random garnish.  Choose the next cell from
+ * the area furthest from the jelly already placed so the player reads a route
+ * across the whole orbit instead of one accidental blue cluster.
+ */
+function spreadJellyIndices(rand: () => number, count: number, avoid: Set<number>): number[] {
+  const out: number[] = []
+  const target = Math.min(count, BOARD_SIZE * 2)
+  while (out.length < target) {
+    let best = -1
+    let bestScore = -Infinity
+    for (let i = 0; i < BOARD_SIZE; i++) {
+      if (avoid.has(i) || out.filter((index) => index === i).length >= 2) continue
+      const x = i % BOARD_WIDTH
+      const y = Math.floor(i / BOARD_WIDTH)
+      const nearest = out.length
+        ? Math.min(
+            ...out.map((index) =>
+              Math.abs(x - (index % BOARD_WIDTH)) + Math.abs(y - Math.floor(index / BOARD_WIDTH)),
+            ),
+          )
+        : 5
+      // Break ties gently but deterministically; the geometry stays dominant.
+      const score = nearest * 100 + rand()
+      if (score > bestScore) {
+        best = i
+        bestScore = score
+      }
+    }
+    if (best < 0) break
+    out.push(best)
+  }
+  return out
+}
+
 function makeObjective(rand: () => number, sectorId: number, id: number): Objective {
   if (id <= 10) {
     return { type: 'jelly', remaining: id <= 3 ? 8 : id <= 6 ? 10 : 12 }
@@ -243,14 +278,10 @@ export function generateCampaign(): CampaignNode {
             const jelly = Array.from({ length: BOARD_SIZE }, () => 0)
             if (objective.type === 'jelly') {
               const maxLayer = sector.id >= 4 ? 2 : 1
-              let placed = 0
-              let g = 0
-              while (placed < objective.remaining && g++ < 400) {
-                const i = Math.floor(rand() * BOARD_SIZE)
-                if (jelly[i]! < maxLayer) {
-                  jelly[i]! += 1
-                  placed += 1
-                }
+              const usable = new Set([...avoid])
+              const placement = spreadJellyIndices(rand, objective.remaining, usable)
+              for (const i of placement) {
+                if (jelly[i]! < maxLayer) jelly[i]! += 1
               }
             }
             const ingredients =

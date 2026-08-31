@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Unbounded:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap');
 @import 'tailwindcss' source('../');
 
 @custom-variant light (&:where(.light, .light *));
@@ -33,6 +34,448 @@ body,
 .app-frame {
   padding-top: env(safe-area-inset-top);
   padding-bottom: calc(2rem + env(safe-area-inset-bottom));
+}
+
+/* Anaclara's dock is intentionally isolated from the primary pilot chrome. */
+.app-frame--coadmin {
+  --sb-gold: #ffd0e3;
+  --sb-rose: #f472b6;
+  --sb-ink: #170b1c;
+}
+
+.app-frame--coadmin > header,
+.app-frame--coadmin .chrome-nav {
+  border-color: rgba(244, 114, 182, 0.34) !important;
+  background: linear-gradient(110deg, rgba(57, 17, 53, 0.9), rgba(23, 11, 28, 0.86)) !important;
+}
+
+.app-frame--coadmin .play-cockpit {
+  --sb-accent: #f472b6;
+  --sb-cyan: #c4a7ff;
+}
+
+.coadmin-sigil {
+  margin: 1px 12px 5px;
+  color: #f9b8dc;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-align: right;
+  text-transform: uppercase;
+}
+
+/* Rive is decorative and can never intercept game or navigation controls. */
+.rive-motion-canvas,
+.rive-motion-fallback {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  width: 100%;
+  height: 100%;
+}
+
+.rive-motion-fallback { overflow: hidden; opacity: 0.72; }
+.rive-motion-fallback::before,
+.rive-motion-fallback::after {
+  content: '';
+  position: absolute;
+  width: 44vmax;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(34, 211, 238, 0.55), transparent);
+  filter: drop-shadow(0 0 7px rgba(34, 211, 238, 0.7));
+  animation: rive-hud-scan 7s cubic-bezier(.22, .61, .36, 1) infinite;
+}
+.rive-motion-fallback::before { top: 17%; left: -38vmax; transform: rotate(-18deg); }
+.rive-motion-fallback::after { bottom: 21%; right: -38vmax; transform: rotate(18deg); animation-delay: -3.5s; }
+@keyframes rive-hud-scan {
+  0%, 16% { opacity: 0; translate: 0 0; }
+  26%, 76% { opacity: 0.85; }
+  100% { opacity: 0; translate: 112vmax 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rive-motion-canvas,
+  .rive-motion-fallback { display: none; }
+  .rive-motion-fallback::before,
+  .rive-motion-fallback::after { animation: none; }
+}
+
+/* --------------------------------------------------------------------------
+   STAR BUSTER 2.0 — orbital command-deck redesign
+   Burgundy Luxury palette · asymmetric play layout · vector-first board
+   -------------------------------------------------------------------------- */
+:root {
+  --sb-bg: #14110f;
+  --sb-surface: #1e1a16;
+  --sb-text: #ede3d3;
+  --sb-gold: #e8a33d;
+  --sb-crimson: #7a2e3a;
+  --sb-green: #4a5a48;
+  --sb-hairline: rgba(237, 227, 211, 0.16);
+  --sb-muted: rgba(237, 227, 211, 0.58);
+  --sb-display: 'Unbounded', 'Arial Black', sans-serif;
+  --sb-body: 'Inter', 'Segoe UI', sans-serif;
+}
+
+body {
+  font-family: var(--sb-body);
+  background:
+    radial-gradient(circle at 18% 9%, rgba(122, 46, 58, 0.2), transparent 31rem),
+    linear-gradient(145deg, #0b0908, var(--sb-bg) 54%, #0d0a09);
+  color: var(--sb-text);
+}
+
+.display,
+.play-title-group h1,
+.powerup-callout strong {
+  font-family: var(--sb-display);
+}
+
+.app-frame:has(.play-cockpit) {
+  max-width: 1180px;
+  padding-inline: clamp(10px, 2.5vw, 32px);
+}
+
+.app-frame:has(.play-cockpit) > header,
+.app-frame:has(.play-cockpit) .chrome-nav > div {
+  width: 100%;
+  max-width: 1180px;
+}
+
+.app-frame:has(.play-cockpit) .chrome-nav {
+  border-bottom: 1px solid var(--sb-hairline);
+  background: rgba(20, 17, 15, 0.94);
+}
+
+.play-cockpit {
+  padding: 12px 0 36px;
+}
+
+.play-masthead {
+  display: grid;
+  grid-template-columns: minmax(90px, 1fr) minmax(0, auto) minmax(90px, 1fr);
+  align-items: center;
+  gap: 16px;
+  min-height: 62px;
+  padding: 7px 0 12px;
+  border-bottom: 1px solid var(--sb-hairline);
+}
+
+.play-back,
+.play-level-id {
+  color: var(--sb-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.play-back {
+  justify-self: start;
+  border: 0;
+  background: none;
+  transition: color 140ms ease, translate 140ms ease;
+}
+
+.play-back:hover { color: var(--sb-gold); translate: -3px 0; }
+.play-level-id { justify-self: end; }
+.play-title-group { min-width: 0; text-align: center; }
+.play-kicker {
+  color: var(--sb-crimson);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.28em;
+}
+.play-title-group h1 {
+  margin-top: 2px;
+  color: var(--sb-text);
+  font-size: clamp(15px, 2vw, 24px);
+  font-weight: 600;
+  letter-spacing: -0.04em;
+}
+
+.play-risk-banner {
+  margin: 10px 0 0 auto;
+  width: fit-content;
+  border-left: 2px solid var(--sb-crimson);
+  padding: 6px 10px;
+  background: rgba(122, 46, 58, 0.12);
+  color: #e6a0aa;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.play-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.68fr) minmax(420px, 1.32fr);
+  align-items: start;
+  gap: clamp(18px, 3vw, 42px);
+  margin-top: 18px;
+}
+
+.play-command-rail {
+  position: sticky;
+  top: 84px;
+  display: grid;
+  gap: 11px;
+  min-width: 0;
+}
+
+.play-command-rail > .space-y-2 {
+  display: grid;
+  gap: 10px;
+  padding: 0;
+}
+
+.play-command-rail .goal-card,
+.play-command-rail .challenge-outline,
+.play-command-rail .comet-meter {
+  border-radius: 0;
+  border: 1px solid var(--sb-hairline);
+  box-shadow: none;
+  background: rgba(30, 26, 22, 0.72);
+}
+
+.play-command-rail .goal-card--hero {
+  border-top: 3px solid var(--sb-gold);
+  animation: none;
+}
+
+.play-command-rail .goal-kicker { color: var(--sb-gold); }
+.play-command-rail .challenge-row {
+  border-radius: 0;
+  border-color: rgba(232, 163, 61, 0.2);
+  background: rgba(11, 9, 8, 0.35);
+}
+
+.play-action-deck {
+  min-width: 0;
+}
+
+.play-board {
+  isolation: isolate;
+  max-width: 650px;
+  margin-inline: auto;
+  border: 1px solid rgba(232, 163, 61, 0.32);
+  border-radius: 8px 26px 8px 26px;
+  background:
+    linear-gradient(rgba(232, 163, 61, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(232, 163, 61, 0.035) 1px, transparent 1px),
+    radial-gradient(circle at 50% 42%, rgba(122, 46, 58, 0.24), transparent 62%),
+    #0b0908;
+  background-size: 12.5% 12.5%, 12.5% 12.5%, auto, auto;
+  box-shadow:
+    inset 0 0 0 5px rgba(11, 9, 8, 0.72),
+    inset 0 0 80px rgba(0, 0, 0, 0.64),
+    0 18px 52px rgba(0, 0, 0, 0.38);
+}
+
+.play-board::before,
+.play-board::after {
+  content: '';
+  position: absolute;
+  z-index: 30;
+  width: 30px;
+  height: 30px;
+  border-color: var(--sb-gold);
+  opacity: 0.72;
+  pointer-events: none;
+}
+.play-board::before { top: -5px; left: -5px; border-top: 2px solid; border-left: 2px solid; }
+.play-board::after { right: -5px; bottom: -5px; border-right: 2px solid; border-bottom: 2px solid; }
+
+.play-board--coadmin {
+  border-color: rgba(255, 116, 190, .62);
+  background:
+    linear-gradient(rgba(255, 135, 198, .045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 135, 198, .045) 1px, transparent 1px),
+    radial-gradient(circle at 50% 42%, rgba(125, 42, 112, .34), transparent 62%),
+    #0d0711;
+  background-size: 12.5% 12.5%, 12.5% 12.5%, auto, auto;
+  box-shadow: inset 0 0 0 5px rgba(15, 6, 16, .72), inset 0 0 90px rgba(54, 6, 49, .58), 0 18px 58px rgba(83, 16, 73, .38);
+}
+
+.coadmin-board-shell .powerup-callout {
+  border-color: #ff74be;
+  background: linear-gradient(90deg, transparent, rgba(34, 8, 32, .97) 15% 85%, transparent);
+}
+.coadmin-board-shell .powerup-callout strong { color: #ffd5ee; text-shadow: 0 0 24px #ff3fa9; }
+.coadmin-hud .goal-card--hero { border-color: rgba(255, 116, 190, .5); background: linear-gradient(145deg, rgba(65, 15, 61, .78), rgba(12, 8, 19, .92)); }
+.coadmin-hud .challenge-outline { border-color: rgba(255, 151, 211, .32); background: rgba(38, 9, 35, .55); }
+
+.challenge-live-progress { display: flex; align-items: center; gap: 7px; margin-top: 5px; color: rgba(207, 242, 255, .72); font-size: 9px; letter-spacing: .08em; text-transform: uppercase; }
+.challenge-live-track { display: block; flex: 1; min-width: 46px; height: 4px; overflow: hidden; border-radius: 999px; background: rgba(255,255,255,.1); }
+.challenge-live-track i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #22d3ee, #ffd24a); box-shadow: 0 0 8px rgba(34,211,238,.5); transition: width 260ms ease; }
+
+.quest-progression { border: 1px solid rgba(232,163,61,.3); border-radius: 16px; padding: 12px 14px; background: linear-gradient(135deg, rgba(232,163,61,.08), rgba(34,211,238,.05)); }
+.quest-progression > div:first-child { display: flex; justify-content: space-between; gap: 12px; color: rgba(255,255,255,.62); font-size: 11px; text-transform: uppercase; letter-spacing: .1em; }
+.quest-progression strong { color: #ffd24a; }
+.quest-progression__track { height: 7px; margin-top: 8px; overflow: hidden; border-radius: 999px; background: rgba(255,255,255,.09); }
+.quest-progression__track i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #ff2bd6, #ffd24a, #22d3ee); transition: width 320ms ease; }
+.quest-progression p { margin-top: 7px; color: rgba(255,255,255,.52); font-size: 11px; }
+
+.piece-slot { padding: clamp(1px, 0.35vw, 4px) !important; }
+.piece-slot > div { filter: saturate(0.96) contrast(1.05); }
+.piece-slot.piece-wave-flow > div {
+  animation: star-wave-flow 320ms cubic-bezier(.2,.8,.2,1) both;
+}
+
+.powerup-callout {
+  position: absolute;
+  z-index: 60;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  min-width: min(84%, 420px);
+  translate: -50% -50%;
+  border-block: 1px solid var(--sb-gold);
+  padding: 13px 20px 15px;
+  background: linear-gradient(90deg, transparent, rgba(20, 17, 15, 0.96) 15% 85%, transparent);
+  text-align: center;
+  pointer-events: none;
+  animation: powerup-callout 600ms cubic-bezier(.16,.8,.24,1) both;
+}
+.powerup-callout__eyebrow {
+  color: #d89aa4;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.32em;
+}
+.powerup-callout strong {
+  margin-top: 4px;
+  color: var(--sb-gold);
+  font-size: clamp(15px, 4vw, 28px);
+  letter-spacing: 0.04em;
+  text-shadow: 0 0 22px rgba(232, 163, 61, 0.52);
+}
+
+.star-react-dance { animation: star-react-dance 430ms ease-out forwards !important; }
+.star-react-spin { animation: star-react-spin 460ms cubic-bezier(.2,.7,.1,1) forwards !important; }
+.star-react-cry { animation: star-react-cry 460ms ease-in forwards !important; }
+.star-react-launch { animation: star-react-launch 480ms cubic-bezier(.3,.2,.2,1) forwards !important; }
+.star-react-supernova { animation: star-react-supernova 540ms cubic-bezier(.12,.78,.2,1) forwards !important; }
+.star-tears {
+  position: absolute;
+  z-index: 7;
+  inset: 0;
+  pointer-events: none;
+}
+.star-tears i {
+  position: absolute;
+  top: 44%;
+  width: 9%;
+  aspect-ratio: .62;
+  border-radius: 70% 30% 68% 32%;
+  background: #87d9ee;
+  box-shadow: 0 0 6px rgba(135, 217, 238, .75);
+  animation: star-tear-fall 430ms ease-in both;
+}
+.star-tears i:first-child { left: 29%; }
+.star-tears i:last-child { right: 29%; animation-delay: 45ms; }
+
+.booster-tray {
+  margin-top: 14px;
+  border: 1px solid var(--sb-hairline);
+  border-radius: 0 18px 0 18px;
+  background: rgba(30, 26, 22, 0.78);
+}
+.booster-slot {
+  min-width: 68px;
+  border-radius: 4px 14px 4px 14px;
+  border-color: rgba(232, 163, 61, 0.22);
+  background: #16120f;
+  transition: translate 150ms ease, border-color 150ms ease, background 150ms ease;
+}
+.booster-slot:hover:not(:disabled) { translate: 0 -3px; border-color: var(--sb-gold); }
+.booster-slot--armed {
+  background: var(--sb-gold);
+  box-shadow: 0 0 0 2px #14110f, 0 0 0 3px var(--sb-gold), 0 10px 24px rgba(232, 163, 61, 0.2);
+}
+
+.tutorial-stage { margin: 0; }
+.tutorial-skip-tab:first-child { display: none; }
+.tutorial-scene {
+  position: relative;
+  display: grid;
+  grid-template-columns: 54px 1fr;
+  border: 1px solid rgba(232, 163, 61, 0.35);
+  border-left: 4px solid var(--sb-gold);
+  border-radius: 0 18px 0 0;
+  padding: 13px 14px;
+  background: #1e1a16;
+  box-shadow: none;
+}
+.tutorial-mascot { width: 48px; height: 48px; }
+.tutorial-bubble h2 { color: var(--sb-text); font-size: 18px; }
+.tutorial-bubble p { color: var(--sb-muted); }
+
+@keyframes star-wave-flow {
+  0% { rotate: -7deg; scale: .94; }
+  52% { rotate: 9deg; scale: 1.08; }
+  100% { rotate: 0deg; scale: 1; }
+}
+@keyframes star-react-dance {
+  0% { translate: 0 0; rotate: 0; scale: 1; opacity: 1; }
+  30% { translate: -12% -18%; rotate: -18deg; scale: 1.18 .82; }
+  58% { translate: 15% -25%; rotate: 22deg; scale: .86 1.2; }
+  100% { translate: 0 46%; rotate: 70deg; scale: .1; opacity: 0; }
+}
+@keyframes star-react-spin {
+  0% { rotate: 0; scale: 1; opacity: 1; }
+  55% { rotate: 420deg; scale: 1.28; }
+  100% { rotate: 760deg; scale: 0; opacity: 0; }
+}
+@keyframes star-react-cry {
+  0% { translate: 0 0; scale: 1; opacity: 1; }
+  22%, 46% { translate: -4% 0; }
+  34%, 58% { translate: 4% 0; }
+  100% { translate: 0 54%; scale: .15; opacity: 0; }
+}
+@keyframes star-react-launch {
+  0% { translate: 0 0; rotate: 0; scale: 1; opacity: 1; }
+  20% { translate: -8% 9%; rotate: -12deg; scale: 1.12; }
+  100% { translate: 210% -190%; rotate: 520deg; scale: .2; opacity: 0; }
+}
+@keyframes star-react-supernova {
+  0% { rotate: 0; scale: 1; filter: brightness(1); opacity: 1; }
+  32% { rotate: -90deg; scale: .62; filter: brightness(2); }
+  60% { rotate: 220deg; scale: 1.72; filter: brightness(2.8); opacity: 1; }
+  100% { rotate: 460deg; scale: 2.7; filter: brightness(4); opacity: 0; }
+}
+@keyframes star-tear-fall {
+  from { translate: 0 0; opacity: 0; }
+  20% { opacity: 1; }
+  to { translate: 0 130%; opacity: 0; }
+}
+@keyframes powerup-callout {
+  0% { opacity: 0; transform: scaleX(.55); filter: blur(6px); }
+  24%, 72% { opacity: 1; transform: scaleX(1); filter: blur(0); }
+  100% { opacity: 0; transform: scaleX(1.08); }
+}
+
+@media (max-width: 820px) {
+  .app-frame:has(.play-cockpit) { max-width: 520px; padding-inline: 10px; }
+  .play-grid { grid-template-columns: 1fr; gap: 12px; }
+  .play-command-rail { position: static; }
+  .play-command-rail .challenge-outline { display: none; }
+  .play-command-rail .goal-card--hero { padding-block: 8px; }
+  .play-command-rail .goal-card--hero h2 { font-size: 17px; }
+  .play-masthead { grid-template-columns: 74px 1fr 74px; }
+  .play-board { max-width: min(100%, 520px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .piece-slot.piece-wave-flow > div,
+  .star-react-dance,
+  .star-react-spin,
+  .star-react-cry,
+  .star-react-launch,
+  .star-react-supernova,
+  .star-tears i,
+  .powerup-callout { animation: none !important; }
+  .powerup-callout { opacity: 1; }
 }
 
 .app-frame:has(.voyage-shell) {
@@ -408,9 +851,63 @@ html.light .chrome-nav {
   shape-rendering: geometricPrecision;
 }
 
+.power-star-art {
+  filter: drop-shadow(0 0 7px var(--star-glow));
+}
+
+.power-star-label {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  bottom: -4px;
+  translate: -50% 0;
+  min-width: max-content;
+  border: 1px solid rgba(255, 255, 255, .72);
+  border-radius: 999px;
+  padding: 1px 4px;
+  background: rgba(5, 3, 12, .9);
+  color: #fff8d0;
+  font-size: clamp(5px, .55vw, 7px);
+  font-weight: 900;
+  line-height: 1.15;
+  letter-spacing: .08em;
+  text-shadow: 0 0 6px var(--star-glow);
+  white-space: nowrap;
+}
+
+.star-striped .power-star-art { animation: power-beam-charge 1.05s ease-in-out infinite; }
+.star-wrapped .power-star-art { animation: power-nova-throb .82s ease-in-out infinite; }
+.star-color-bomb .power-star-art { animation: power-prism-turn 2.4s linear infinite; }
+
+@keyframes power-beam-charge {
+  0%, 100% { filter: drop-shadow(0 0 5px var(--star-glow)); }
+  50% { filter: drop-shadow(0 0 13px #fff); }
+}
+
+@keyframes power-nova-throb {
+  0%, 100% { scale: .96; filter: drop-shadow(0 0 7px #ff2bd6); }
+  45% { scale: 1.08; filter: drop-shadow(0 0 15px #ffd24a); }
+}
+
+@keyframes power-prism-turn {
+  to { rotate: 1turn; }
+}
+
 .star-face {
   pointer-events: none;
+  transform-origin: 50% 50%;
 }
+
+.star-react-dance .star-face { animation: face-dance 220ms ease-in-out 2 both; }
+.star-react-spin .star-face { animation: face-dizzy 360ms linear both; }
+.star-react-cry .star-face { animation: face-cry 260ms ease-in both; }
+.star-react-launch .star-face { animation: face-launch 320ms ease-in both; }
+.star-react-supernova .star-face { animation: face-dizzy 460ms linear both; }
+
+@keyframes face-dance { 50% { transform: translateY(-3px) scale(1.15); } }
+@keyframes face-dizzy { to { transform: rotate(720deg) scale(.55); } }
+@keyframes face-cry { 40% { transform: translateY(3px) scaleY(.75); } }
+@keyframes face-launch { to { transform: translateX(16px) translateY(-9px) rotate(28deg); } }
 
 .star-eyes {
   transform-box: fill-box;
@@ -575,6 +1072,15 @@ html.light .chrome-nav {
 
 .piece-slot.piece-moving {
   will-change: transform;
+}
+
+.booster-slot--busy {
+  cursor: progress;
+  filter: saturate(0.55);
+}
+
+.piece-slot.piece-wave-flow > div {
+  animation-delay: var(--wave-phase, 0ms);
 }
 
 .star-3d,
@@ -2244,6 +2750,33 @@ html.light .chrome-nav {
   pointer-events: none;
 }
 
+.globe-terrain,
+.globe-crater {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.globe-terrain {
+  inset: 6%;
+  background:
+    repeating-linear-gradient(var(--globe-band-angle), transparent 0 12%, var(--globe-terrain) 14% 19%, transparent 23% 34%),
+    radial-gradient(circle at 68% 62%, var(--globe-atmosphere), transparent 46%);
+  mix-blend-mode: screen;
+  opacity: 0.55;
+  animation: globe-terrain-drift calc(var(--globe-spin, 28s) * 1.25) ease-in-out infinite alternate;
+}
+
+.globe-crater {
+  width: 19%;
+  height: 11%;
+  left: calc(var(--globe-crater-x) - 9.5%);
+  top: calc(var(--globe-crater-y) - 5.5%);
+  background: radial-gradient(ellipse at 36% 32%, rgba(255,255,255,.25), rgba(0,0,0,.45) 56%, transparent 70%);
+  opacity: 0.66;
+  mix-blend-mode: multiply;
+}
+
 .globe--saturn .globe-photo {
   clip-path: none;
 }
@@ -2297,8 +2830,14 @@ html.light .chrome-nav {
 
 .globe--locked .globe-halo,
 .globe--locked .globe-photo,
-.globe--locked .globe-shine {
+.globe--locked .globe-shine,
+.globe--locked .globe-terrain {
   animation: none;
+}
+
+@keyframes globe-terrain-drift {
+  from { transform: translateX(-3%) rotate(-2deg); }
+  to { transform: translateX(3%) rotate(2deg); }
 }
 
 .map-page {

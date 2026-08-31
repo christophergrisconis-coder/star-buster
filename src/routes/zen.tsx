@@ -4,18 +4,7 @@ import { createGame, reduce } from '~/engine'
 import type { GameState, LevelConfig } from '~/engine/types'
 import { Board } from '~/ui/Board'
 import { synth } from '~/audio/synth'
-import { grantStardust } from '~/lib/progress'
-
-const ZEN_BEST_KEY = 'star-buster-zen-best'
-
-function readZenBest(): number {
-  if (typeof window === 'undefined') return 0
-  try {
-    return Number(localStorage.getItem(ZEN_BEST_KEY)) || 0
-  } catch {
-    return 0
-  }
-}
+import { getInventory, saveInventory } from '~/lib/progress'
 
 const ZEN_LEVEL_CONFIG: LevelConfig = {
   id: 9999,
@@ -55,8 +44,6 @@ function ZenOrbitPage() {
   const [earnedStardust, setEarnedStardust] = useState(0)
   const [lastMilestone, setLastMilestone] = useState(0)
   const [showMilestoneToast, setShowMilestoneToast] = useState(false)
-  const [best, setBest] = useState(readZenBest)
-  const [newBest, setNewBest] = useState(false)
 
   // Start ambient audio on mount
   useEffect(() => {
@@ -66,19 +53,6 @@ function ZenOrbitPage() {
     }
   }, [])
 
-  // Track the personal best zen score on this device.
-  useEffect(() => {
-    if (state.score > best) {
-      setBest(state.score)
-      setNewBest(best > 0)
-      try {
-        localStorage.setItem(ZEN_BEST_KEY, String(state.score))
-      } catch {
-        /* storage unavailable */
-      }
-    }
-  }, [state.score, best])
-
   // Check Stardust milestone payouts every 5,000 score
   useEffect(() => {
     const currentMilestone = Math.floor(state.score / 5000)
@@ -86,7 +60,11 @@ function ZenOrbitPage() {
       const added = (currentMilestone - lastMilestone) * 5
       setEarnedStardust((prev) => prev + added)
       setLastMilestone(currentMilestone)
-      grantStardust(added)
+
+      // Grant stardust to inventory
+      const inv = getInventory()
+      inv.stardust = (inv.stardust || 0) + added
+      saveInventory(inv)
 
       synth.fanfare()
       setShowMilestoneToast(true)
@@ -132,13 +110,6 @@ function ZenOrbitPage() {
           <div>
             <div className="text-[10px] uppercase tracking-wider text-white/40">Zen Score</div>
             <div className="display text-[22px] text-gold">{state.score.toLocaleString()}</div>
-          </div>
-          <div>
-            <div className="text-[10px] uppercase tracking-wider text-white/40">Best</div>
-            <div className={`display text-[22px] ${newBest ? 'text-gold' : 'text-white/80'}`}>
-              {best.toLocaleString()}
-              {newBest ? ' ★' : ''}
-            </div>
           </div>
           <div>
             <div className="text-[10px] uppercase tracking-wider text-white/40">Harvested</div>

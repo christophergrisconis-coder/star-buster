@@ -10,6 +10,7 @@ import {
   nextPlayTarget,
   nextSequentialLevel,
 } from './lock'
+import { pilotSlot } from './pilotSlot'
 
 const KEY = 'star-buster-progress'
 const INV = 'star-buster-inventory'
@@ -85,7 +86,7 @@ const defaultInv = (): Inventory => ({
 function read<T>(key: string, fallback: T): T {
   if (typeof window === 'undefined') return fallback
   try {
-    const raw = localStorage.getItem(key)
+    const raw = localStorage.getItem(accountStorageKey(key))
     return raw ? (JSON.parse(raw) as T) : fallback
   } catch {
     return fallback
@@ -94,7 +95,22 @@ function read<T>(key: string, fallback: T): T {
 
 function write(key: string, value: unknown) {
   if (typeof window === 'undefined') return
-  localStorage.setItem(key, JSON.stringify(value))
+  localStorage.setItem(accountStorageKey(key), JSON.stringify(value))
+}
+
+/** Separate mutable saves per pilot on a shared device. */
+export function accountStorageKey(key: string): string {
+  if (typeof window === 'undefined') return key
+  const slot = pilotSlot()
+  if (!slot) return key
+  const scoped = `${key}${slot}`
+  // Preserve existing shared saves: Ana receives a private copy the first time
+  // she opens the updated app, then future changes stay in her own slot.
+  if (localStorage.getItem(scoped) == null) {
+    const legacy = localStorage.getItem(key)
+    if (legacy != null) localStorage.setItem(scoped, legacy)
+  }
+  return scoped
 }
 
 export function getProgress(): ProgressBlob {
@@ -103,6 +119,10 @@ export function getProgress(): ProgressBlob {
 
 export function getInventory(): Inventory {
   return read<Inventory>(INV, defaultInv())
+}
+
+export function saveInventory(inv: Inventory) {
+  write(INV, inv)
 }
 
 const ADMIN_KEY = 'star-buster-admin'
@@ -256,13 +276,13 @@ export function applyLifeRegen(): void {
     // Regenerate lives towards max
     const lastRegenKey = 'star-buster-last-regen'
     const now = Date.now()
-    const last = Number(localStorage.getItem(lastRegenKey) || now)
+    const last = Number(localStorage.getItem(accountStorageKey(lastRegenKey)) || now)
     const passedMinutes = Math.floor((now - last) / (15 * 60 * 1000))
     if (passedMinutes >= 1) {
       const added = Math.min(getMaxLives() - inv.lives, passedMinutes)
       inv.lives += added
       write(INV, inv)
-      localStorage.setItem(lastRegenKey, String(now))
+      localStorage.setItem(accountStorageKey(lastRegenKey), String(now))
     }
   }
 }

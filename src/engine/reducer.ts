@@ -37,6 +37,7 @@ import {
   type GameState,
   type LevelConfig,
   type SpecialKind,
+  type WaveCause,
 } from './types'
 
 const MAX_WAVES = 48
@@ -53,11 +54,12 @@ function detonateQueue(
   width: number,
   height: number,
   stripBlockersOnWipe = false,
-): { cells: Cell[]; destroyed: Set<number> } {
+): { cells: Cell[]; destroyed: Set<number>; activatedSpecials: Array<{ index: number; special: SpecialKind }> } {
   const next = cells.map(cloneCell)
   const destroyed = new Set<number>()
   const queue: number[] = [...initial]
   const detonatedSpecial = new Set<number>()
+  const activatedSpecials: Array<{ index: number; special: SpecialKind }> = []
 
   while (queue.length) {
     const i = queue.pop()!
@@ -68,6 +70,7 @@ function detonateQueue(
     const cell = cells[i]!
     if (cell.special !== 'none' && !detonatedSpecial.has(i)) {
       detonatedSpecial.add(i)
+      activatedSpecials.push({ index: i, special: cell.special })
       if (cell.special === 'striped-h' || cell.special === 'striped-v') {
         const axis = cell.special === 'striped-h' ? 'h' : 'v'
         for (const d of stripedLine(cells, i, axis, width, height).destroyed) {
@@ -96,7 +99,7 @@ function detonateQueue(
     for (let i = 0; i < next.length; i++) destroyed.add(i)
   }
 
-  return { cells: next, destroyed }
+  return { cells: next, destroyed, activatedSpecials }
 }
 
 function applyDestroy(state: GameState, destroyed: Set<number>, spawnedAt: Map<number, SpecialKind>): GameState {
@@ -111,7 +114,10 @@ function applyDestroy(state: GameState, destroyed: Set<number>, spawnedAt: Map<n
     const jelly = cells[i]!.jelly
     const frosting = cells[i]!.frosting
     if (frosting > 0) {
-      cells[i] = { ...emptyCell(jelly), frosting }
+      // A direct power-up strike chips the asteroid as well. Previously only
+      // adjacent collateral damage could reduce frosting, making a hammer feel
+      // visually powerful but mechanically ineffective.
+      cells[i] = { ...emptyCell(jelly), frosting: Math.max(0, frosting - 1) }
       continue
     }
     if (cells[i]!.chocolate && !state.cells[i]!.chocolate) {
@@ -147,8 +153,13 @@ function applyDestroy(state: GameState, destroyed: Set<number>, spawnedAt: Map<n
   }
 }
 
-function blastAndRefill(state: GameState, seeds: Iterable<number>, combo = 1): GameState {
-  const { destroyed } = detonateQueue(state.cells, seeds, state.width, state.height)
+function blastAndRefill(
+  state: GameState,
+  seeds: Iterable<number>,
+  combo = 1,
+  cause: WaveCause = 'ignite',
+): GameState {
+  const { destroyed, activatedSpecials } = detonateQueue(state.cells, seeds, state.width, state.height)
   let current = applyDestroy(state, destroyed, new Map())
   const collected = collectIngredients(current.cells, current.width, current.height, current.exits)
   current = { ...current, cells: collected.cells }
@@ -183,6 +194,8 @@ function blastAndRefill(state: GameState, seeds: Iterable<number>, combo = 1): G
         blast,
         destroyed: [...destroyed],
         spawnedSpecials: [],
+        activatedSpecials,
+        cause,
         gravity: grav.moves,
         refill: filled.refill,
         groups: 1,
@@ -190,10 +203,14 @@ function blastAndRefill(state: GameState, seeds: Iterable<number>, combo = 1): G
       },
     ],
   }
-  return resolveCascades(current)
+  return resolveCascades(current, undefined, 'cascade')
 }
 
-function resolveCascades(state: GameState, preferredOrigin?: MatchOrigin): GameState {
+function resolveCascades(
+  state: GameState,
+  preferredOrigin?: MatchOrigin,
+  initialCause: WaveCause = 'match',
+): GameState {
   let current = { ...state, events: [...state.events] }
   let combo = 0
 
@@ -216,7 +233,7 @@ function resolveCascades(state: GameState, preferredOrigin?: MatchOrigin): GameS
     }
 
     const waveCells = current.cells
-    const { destroyed } = detonateQueue(
+    const { destroyed, activatedSpecials } = detonateQueue(
       waveCells,
       matchSet,
       current.width,
@@ -270,6 +287,8 @@ function resolveCascades(state: GameState, preferredOrigin?: MatchOrigin): GameS
           blast,
           destroyed: [...destroyed],
           spawnedSpecials: [...spawnMap.entries()].map(([index, special]) => ({ index, special })),
+          activatedSpecials,
+          cause: wave === 0 ? initialCause : 'cascade',
           gravity: grav.moves,
           refill: filled.refill,
           groups,
@@ -402,6 +421,8 @@ function applySpecialCombo(state: GameState, a: number, b: number): GameState | 
         blast: 'L',
         destroyed: [...destroyed],
         spawnedSpecials: [],
+        activatedSpecials: detonated.activatedSpecials,
+        cause: 'special-combo',
         gravity: grav.moves,
         refill: filled.refill,
         groups: 1,
@@ -409,7 +430,7 @@ function applySpecialCombo(state: GameState, a: number, b: number): GameState | 
       },
     ],
   }
-  return resolveCascades(next)
+  return resolveCascades(next, undefined, 'cascade')
 }
 
 function rewardForMove(state: GameState): GameState {
@@ -540,12 +561,12 @@ export function createGame(config: LevelConfig): GameState {
     kitDrops: 0,
   }
   state = syncJellyObjective(state)
-  state = resolveCascades(state)
+  state = resolveCascades(state, undefined, 'settle')
   if (hasAnyMatch(state.cells, state.width, state.height) || !hasLegalSwap(state.cells, state.width, state.height)) {
     const retry = generateInitialCells({ ...config, seed: (config.seed + 7919) | 0 })
     state = { ...state, cells: retry.cells, rngState: retry.rngState }
     state = syncJellyObjective(state)
-    state = resolveCascades(state)
+    state = resolveCascades(state, undefined, 'settle')
   }
   state = { ...state, events: [], combo: 0 }
   return state
@@ -613,7 +634,7 @@ export function reduce(state: GameState, action: EngineAction): GameState {
     if (!cell || cell.special === 'none' || !isSwappable(cell)) {
       return { ...current, events: [{ type: 'invalid-swap', a: action.index, b: action.index }] }
     }
-    current = blastAndRefill(current, [action.index], 1)
+    current = blastAndRefill(current, [action.index], 1, 'ignite')
     current = { ...current, movesLeft: Math.max(0, current.movesLeft - 1) }
     current = rewardForMove(current)
     return finishMove(current, true)
@@ -624,7 +645,7 @@ export function reduce(state: GameState, action: EngineAction): GameState {
     const cell = current.cells[i]!
     if (cell.frosting === 0 && isHole(cell) && !cell.chocolate) return current
     if (action.type === 'hammer' && cell.special !== 'none' && isSwappable(cell)) {
-      current = blastAndRefill(current, [i], 1)
+      current = blastAndRefill(current, [i], 1, 'hammer')
       current = rewardForMove(current)
       return finishMove(current, false)
     }
@@ -636,7 +657,7 @@ export function reduce(state: GameState, action: EngineAction): GameState {
         return Boolean(hit && hit.special !== 'none' && isSwappable(hit))
       })
       if (seeds.length) {
-        current = blastAndRefill(current, seeds, 1)
+        current = blastAndRefill(current, seeds, 1, 'well')
         current = rewardForMove(current)
         return finishMove(current, false)
       }
@@ -655,13 +676,15 @@ export function reduce(state: GameState, action: EngineAction): GameState {
           blast: action.type === 'well' ? 'M' : 'S',
           destroyed: [...destroyed],
           spawnedSpecials: [],
+          activatedSpecials: [],
+          cause: action.type,
           gravity: grav.moves,
           refill: filled.refill,
           groups: 1,
         },
       ],
     }
-    current = resolveCascades(current)
+    current = resolveCascades(current, undefined, action.type)
     current = rewardForMove(current)
     return finishMove(current, false)
   }
@@ -683,7 +706,7 @@ export function reduce(state: GameState, action: EngineAction): GameState {
       cells[b] = { ...cells[b]!, color: colorA }
     }
     current = { ...current, cells, rngState: rng }
-    current = resolveCascades(current)
+    current = resolveCascades(current, undefined, 'shuffle')
     current = rewardForMove(current)
     return finishMove(current, false)
   }
@@ -698,7 +721,7 @@ export function reduce(state: GameState, action: EngineAction): GameState {
       }
     }
     current = { ...current, cells }
-    current = resolveCascades(current)
+    current = resolveCascades(current, undefined, 'splash')
     current = rewardForMove(current)
     return finishMove(current, false)
   }
@@ -712,7 +735,7 @@ export function reduce(state: GameState, action: EngineAction): GameState {
         events: [...current.events, { type: 'status', status: 'won' }],
       }
     }
-    current = blastAndRefill(current, [nextSun], Math.max(1, current.combo + 1))
+    current = blastAndRefill(current, [nextSun], Math.max(1, current.combo + 1), 'finale')
     if (!current.cells.some((c) => c.special !== 'none')) {
       current = {
         ...current,

@@ -1,14 +1,9 @@
+import { accountStorageKey } from './progress'
+
 const KEY = 'star-buster-flight-school'
 
 function schoolKey() {
-  if (typeof window === 'undefined') return KEY
-  try {
-    const raw = localStorage.getItem('star-buster-owner')
-    if (raw && JSON.parse(raw).role === 'co-admin') return `${KEY}:ana`
-  } catch {
-    /* ignore */
-  }
-  return KEY
+  return accountStorageKey(KEY)
 }
 
 export function hasCompletedTutorial(): boolean {

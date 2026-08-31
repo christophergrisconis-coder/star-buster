@@ -54,7 +54,7 @@ function SystemPage() {
                 requestWarpThen(() => navigate({ to: '/nebula/$nebulaId', params: { nebulaId: n.id } }))
               }}
             >
-              <PlanetGlobe look={planetLook(first?.id ?? i + 11)} size="thumb" locked={!open} />
+              <PlanetGlobe look={planetLook(first?.id ?? i + 11, n.id)} size="thumb" locked={!open} />
               <span>
                 <span className="block text-[16px] text-[#efe6d2]">{open ? n.name : 'Uncharted'}</span>
                 <span className="block text-[11px] uppercase tracking-[0.16em] text-white/40">

@@ -1,4 +1,4 @@
-import { grantCoins, grantItem, getProgress } from '~/lib/progress'
+import { accountStorageKey, grantCoins, grantItem, grantStardust, getInventory, saveInventory, getProgress } from '~/lib/progress'
 
 export interface StreakDayReward {
   day: number
@@ -25,9 +25,7 @@ export const STREAK_REWARDS: StreakDayReward[] = [
     icon: '✨',
     rewardText: '+25 Stardust',
     grant: () => {
-      const inv = JSON.parse(localStorage.getItem('star-buster-inventory') || '{}')
-      inv.stardust = (inv.stardust || 0) + 25
-      localStorage.setItem('star-buster-inventory', JSON.stringify(inv))
+      grantStardust(25)
     },
   },
   {
@@ -65,9 +63,7 @@ export const STREAK_REWARDS: StreakDayReward[] = [
     rewardText: '2x Hammers + 35 Dust',
     grant: () => {
       grantItem('hammer', 2)
-      const inv = JSON.parse(localStorage.getItem('star-buster-inventory') || '{}')
-      inv.stardust = (inv.stardust || 0) + 35
-      localStorage.setItem('star-buster-inventory', JSON.stringify(inv))
+      grantStardust(35)
     },
   },
   {
@@ -80,9 +76,7 @@ export const STREAK_REWARDS: StreakDayReward[] = [
       grantItem('solar-flare', 2)
       grantItem('hammer', 2)
       grantItem('gravity-well', 1)
-      const inv = JSON.parse(localStorage.getItem('star-buster-inventory') || '{}')
-      inv.stardust = (inv.stardust || 0) + 80
-      localStorage.setItem('star-buster-inventory', JSON.stringify(inv))
+      grantStardust(80)
     },
   },
   {
@@ -121,9 +115,7 @@ export const STREAK_REWARDS: StreakDayReward[] = [
     rewardText: '3x Color Splash + 60 Dust',
     grant: () => {
       grantItem('color-splash', 3)
-      const inv = JSON.parse(localStorage.getItem('star-buster-inventory') || '{}')
-      inv.stardust = (inv.stardust || 0) + 60
-      localStorage.setItem('star-buster-inventory', JSON.stringify(inv))
+      grantStardust(60)
     },
   },
   {
@@ -158,10 +150,10 @@ export const STREAK_REWARDS: StreakDayReward[] = [
       grantItem('gravity-well', 3)
       grantItem('star-shuffle', 2)
       grantItem('moves-5', 4)
-      const inv = JSON.parse(localStorage.getItem('star-buster-inventory') || '{}')
-      inv.stardust = (inv.stardust || 0) + 150
-      inv.lives = Math.max(inv.lives || 5, 8)
-      localStorage.setItem('star-buster-inventory', JSON.stringify(inv))
+      grantStardust(150)
+      const inv = getInventory()
+      inv.lives = Math.max(inv.lives, 8)
+      saveInventory(inv)
     },
   },
 ]
@@ -188,7 +180,7 @@ function getYesterdayString(): string {
 export function getStreakState(): StreakState {
   if (typeof window === 'undefined') return { currentDay: 1, lastClaimDate: '', totalClaims: 0 }
   try {
-    const raw = localStorage.getItem(STREAK_KEY)
+    const raw = localStorage.getItem(accountStorageKey(STREAK_KEY))
     if (!raw) return { currentDay: 1, lastClaimDate: '', totalClaims: 0 }
     return JSON.parse(raw) as StreakState
   } catch {
@@ -232,6 +224,6 @@ export function claimDailyStreak(): { success: boolean; day: number; reward: Str
     totalClaims: (state.totalClaims || 0) + 1,
   }
 
-  localStorage.setItem(STREAK_KEY, JSON.stringify(newState))
+  localStorage.setItem(accountStorageKey(STREAK_KEY), JSON.stringify(newState))
   return { success: true, day: nextDay, reward }
 }
